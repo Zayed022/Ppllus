@@ -25,6 +25,21 @@ const reelSchema = new Schema(
     sharesCount: { type: Number, default: 0 },
 
     isDeleted: { type: Boolean, default: false },
+    moderation: {
+      status: {
+        type: String,
+        enum: ["ACTIVE", "UNDER_REVIEW", "REMOVED", "SHADOW_BANNED"],
+        default: "ACTIVE",
+        index: true,
+      },
+      reason: String,
+      reviewedAt: Date,
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+      },
+    }
+    
   },
   { timestamps: true }
 );

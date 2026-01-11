@@ -2,8 +2,8 @@ import pkg from "pg";
 const { Pool } = pkg;
 
 export const pgPool = new Pool({
-    host: "localhost",
-    port: 5432,
+    host: process.env.PG_HOST,
+    port: process.env.PG_PORT,
     user: "postgres",
     password: "zayed123", // hardcoded
     database: "pplus_wallet",

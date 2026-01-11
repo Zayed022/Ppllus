@@ -21,6 +21,9 @@ export const processReelViewReward = async ({
       `SELECT pg_advisory_xact_lock(hashtext($1))`,
       [walletId]
     );
+
+    if (trust?.shadowBanned) return;
+
     
 
     // 1️⃣ Ensure wallet exists

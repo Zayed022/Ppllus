@@ -1,14 +1,20 @@
 import EngagementEvent from "../models/engagementEvent.models.js";
 import Reel from "../models/reel.models.js";
-import { processReelViewReward } from "../service/reward.service.js";
+import { processReelViewReward } from "../services/reward.service.js";
 import { emitEvent } from "../events/emitEvent.js";
+import { isFeatureEnabled } from "../services/featureFlag.service.js";
 
 
 export const recordReelView = async (req, res) => {
   const { reelId, watchTime } = req.body;
   const userId = req.user.sub;
 
-  // 1️⃣ Store engagement (MongoDB – analytics / ranking)
+  const reel = await Reel.findById(reelId).select("creator createdAt");
+  if (!reel) {
+    return res.status(404).json({ message: "Reel not found" });
+  }
+
+  // 1️⃣ Store engagement (MongoDB)
   await EngagementEvent.create({
     user: userId,
     contentId: reelId,
@@ -17,13 +23,27 @@ export const recordReelView = async (req, res) => {
     watchTime,
   });
 
-  // 2️⃣ Async-safe reward trigger (Postgres)
-  processReelViewReward({
-    userId,
-    reelId,
+  // 2️⃣ Emit system event (analytics / notifications / abuse)
+  emitEvent({
+    type: "REEL_VIEW",
+    actorId: userId,
+    targetUserId: reel.creator,
+    entityId: reelId,
     watchTime,
-  }).catch(console.error); // non-blocking
+    createdAt: reel.createdAt,
+  });
+  
 
+  // 3️⃣ Feature-flagged wallet reward (SAFE)
+  if (await isFeatureEnabled("wallet_rewards", userId)) {
+    processReelViewReward({
+      userId,
+      reelId,
+      watchTime,
+    }).catch(console.error);
+  }
+
+  // 4️⃣ Respond immediately (never block)
   res.json({ status: "OK" });
 };
 
@@ -52,6 +72,15 @@ export const likeReel = async (req, res) => {
       targetUserId: reel.creator,
       entityId: reelId,
     });
+
+    emitEvent({
+      type: "RANK_REEL",
+      reelId,
+      creatorId: reel.creator,
+      watchTime,
+      createdAt: reel.createdAt,
+    });
+    
 
     res.json({ message: "Liked" });
   } catch (err) {
@@ -86,6 +115,10 @@ export const shareReel = async (req, res) => {
     targetUserId: reel.creator,
     entityId: reelId,
   });
+  
+
+ 
+  
 
   res.json({ message: "Shared" });
 };

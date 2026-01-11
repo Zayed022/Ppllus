@@ -201,3 +201,15 @@ export const deactivateAccount = async (req, res) => {
   
     res.json({ message: "Account deactivated" });
 };
+
+export const getSuggestedUsers = async (req, res) => {
+  const suggestions = await User.find({
+    _id: { $ne: req.user.sub },
+    visibility: "PUBLIC",
+  })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .select("username profileImage");
+
+  res.json(suggestions);
+};

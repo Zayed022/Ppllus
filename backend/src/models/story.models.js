@@ -1,15 +1,18 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
-const storySchema = new Schema(
+const storySchema = new mongoose.Schema(
   {
     user: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
 
-    mediaUrl: { type: String, required: true },
+    mediaUrl: {
+      type: String,
+      required: true,
+    },
 
     mediaType: {
       type: String,
@@ -17,18 +20,33 @@ const storySchema = new Schema(
       required: true,
     },
 
+    duration: {
+      type: Number, // seconds (video only)
+    },
+
+    city: {
+      type: String,
+      index: true,
+    },
+
+    viewsCount: {
+      type: Number,
+      default: 0,
+    },
+
     expiresAt: {
       type: Date,
       required: true,
       index: true,
     },
-
-    viewsCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
-// TTL index 
+// 🔥 Auto-delete after 24 hours
 storySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Feed ordering
+storySchema.index({ user: 1, createdAt: -1 });
 
 export default mongoose.model("Story", storySchema);

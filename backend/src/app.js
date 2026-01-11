@@ -16,6 +16,12 @@ app.use(
       windowSec: 60,
     })
   );
+// app.js
+app.use(rateLimiter({ keyPrefix: "global", limit: 300, windowSec: 60 }));
+app.use("/auth", rateLimiter({ keyPrefix: "auth", limit: 10, windowSec: 60 }));
+app.use("/wallet", rateLimiter({ keyPrefix: "wallet", limit: 5, windowSec: 60 }));
+app.use("/engagement", rateLimiter({ keyPrefix: "engagement", limit: 100, windowSec: 60 }));
+
   
 
 import userRoute from './routes/users.routes.js'
@@ -26,6 +32,21 @@ app.use("/api/v1/follow",followRoute);
 
 import reelRoute from './routes/reel.routes.js'
 app.use("/api/v1/reel",reelRoute);
+
+import exploreRoute from './routes/explore.routes.js'
+app.use("/api/v1/explore",exploreRoute);
+
+import discoveryRoute from './routes/discovery.routes.js'
+app.use("/api/v1/discovery",discoveryRoute);
+
+import safetyRoute from './routes/safety.routes.js'
+app.use("/api/v1/safety",safetyRoute);
+
+import adminRoute from './routes/admin.routes.js'
+app.use("/api/v1/admin",adminRoute);
+
+import healthRoute from './routes/health.routes.js'
+app.use("/api/v1/health",healthRoute);
 
 
 export {app}

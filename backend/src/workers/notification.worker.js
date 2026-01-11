@@ -45,3 +45,18 @@ export const notificationWorker = new Worker(
   },
   { connection: redis }
 );
+
+import { pushQueue } from "../queues/push.queue.js";
+
+await pushQueue.add(
+  "SEND_PUSH",
+  {
+    userId: event.targetUserId,
+    type: event.type,
+    entityId: event.entityId,
+  },
+  {
+    removeOnComplete: true,
+    attempts: 3,
+  }
+);
