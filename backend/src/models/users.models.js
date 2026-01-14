@@ -125,11 +125,12 @@ const userSchema = new Schema(
       type: {
         type: String,
         enum: ["Point"],
-        default: "Point",
+        
       },
       coordinates: {
-        type: [Number], // [lng, lat]
-      },
+        type: [Number],
+        default: undefined // IMPORTANT
+      }
     },
 
     city: {
@@ -160,12 +161,12 @@ userSchema.virtual("name").get(function () {
   return [this.firstName, this.surname].filter(Boolean).join(" ");
 });
 
+userSchema.pre("save", async function () {
+  if (!this.isModified("password") || !this.password) return;
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
+
 
 
 userSchema.methods.isPasswordCorrect = async function (password) {

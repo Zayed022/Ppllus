@@ -1,6 +1,7 @@
 import User from "../models/users.models.js";
 import bcrypt from "bcryptjs";
 import { hashToken } from "../utils/token.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 
 const generateAccessAndRefreshTokens = async (user) => {
@@ -146,11 +147,19 @@ export const updateInterests = async (req, res) => {
 };
 
 export const updateProfileImage = async (req, res) => {
-    const { profileImage } = req.body; // Cloudinary URL
+  const imageLocalPath = req.files?.profileImage[0]?.path;
+  console.log(imageLocalPath);
+  if (!imageLocalPath) {
+    return res.status(400).json({ message: "Image file is required" });
+  }
+  const image = await uploadOnCloudinary(imageLocalPath);
+  if (!image) {
+    return res.status(400).json({ message: "Image file is required" });
+  } // Cloudinary URL
   
     const user = await User.findByIdAndUpdate(
       req.user.sub,
-      { profileImage },
+      { profileImage: image.url },
       { new: true }
     );
   
