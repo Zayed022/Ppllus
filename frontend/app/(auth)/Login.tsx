@@ -90,21 +90,28 @@ export default function LoginScreen() {
         </View>
 
         {/* Continue */}
-        <TouchableOpacity
-          style={[styles.button, loading && { opacity: 0.7 }]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Continue</Text>
-          )}
-        </TouchableOpacity>
+        {/* Continue */}
+<TouchableOpacity
+  style={[styles.button, loading && { opacity: 0.7 }]}
+  onPress={handleLogin}
+  disabled={loading}
+>
+  {loading ? (
+    <ActivityIndicator color="#fff" />
+  ) : (
+    <Text style={styles.buttonText}>Continue</Text>
+  )}
+</TouchableOpacity>
 
-        {/* Footer */}
-        <Text style={styles.footer}>Onwayz Terms & Conditions</Text>
-      </View>
+{/* Sign up */}
+<View style={styles.signupWrapper}>
+  <Text style={styles.signupText}>New to Onwayz?</Text>
+  <TouchableOpacity onPress={() => router.push("/(auth)/Register")}>
+    <Text style={styles.signupLink}> Sign up</Text>
+  </TouchableOpacity>
+</View>
+</View>
+
     </KeyboardAvoidingView>
   );
 }
@@ -173,4 +180,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#777",
   },
+  signupWrapper: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 18,
+  },
+  
+  signupText: {
+    fontSize: 14,
+    color: "#555",
+  },
+  
+  signupLink: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+  },
+  
 });

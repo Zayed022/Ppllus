@@ -140,5 +140,5 @@ export const getFollowRequests = async (req, res) => {
     }).populate("follower", "username profileImage");
   
     res.json(requests);
-  };
+};
     

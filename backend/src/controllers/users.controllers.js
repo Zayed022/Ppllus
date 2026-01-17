@@ -15,30 +15,42 @@ const generateAccessAndRefreshTokens = async (user) => {
 };
   
 export const register = async (req, res) => {
+  try {
     const { email, phone, password } = req.body;
-  
+
+    console.log("REGISTER REQUEST", { email, phone });
+
     const exists = await User.findOne({ $or: [{ email }, { phone }] });
     if (exists) {
       return res.status(409).json({ message: "User already exists" });
     }
-  
+
     const user = await User.create({
       email,
       phone,
       password,
       pplusNumber: `PL-${Date.now()}`,
     });
-  
+
     const tokens = await generateAccessAndRefreshTokens(user);
-  
-    res.status(201).json({
+
+    return res.status(201).json({
       user: {
         id: user._id,
         isOnboarded: user.isOnboarded,
       },
       ...tokens,
     });
-};  
+  } catch (error) {
+    console.error("REGISTER ERROR", error);
+
+    return res.status(500).json({
+      message: "Registration failed",
+      error: error.message,
+    });
+  }
+};
+
 
 export const login = async (req, res) => {
     const { email, password } = req.body;
@@ -189,7 +201,6 @@ export const searchUsers = async (req, res) => {
   
     res.json(users);
 };
-  
 
 export const updatePrivacy = async (req, res) => {
     const { visibility } = req.body;

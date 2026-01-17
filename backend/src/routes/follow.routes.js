@@ -13,8 +13,8 @@ import { authenticate } from "../middlewares/auth.middlewares.js";
 
 const router = express.Router();
 
-router.post("/:userId", authenticate, followUser);
-router.delete("/:userId", authenticate, unfollowUser);
+router.post("/:userId", authenticate, followUser);              // done
+router.delete("/:userId", authenticate, unfollowUser);          // done
 
 router.get("/followers/:userId", authenticate, getFollowers);
 router.get("/following/:userId", authenticate, getFollowing);

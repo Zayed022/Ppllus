@@ -30,7 +30,6 @@ router.get("/me", authenticate, getMe);
 router.post("/register", authLimiter, register); // done
 router.post("/login", authLimiter, login);       // done
 router.post("/refresh", authLimiter, refreshAccessToken);
-
 router.patch("/profile/basic", authenticate, updateBasicProfile);    // done
 router.patch("/profile/dob-gender", authenticate, updateDobGender); // done
 router.patch("/profile/interests", authenticate, updateInterests);  // done
