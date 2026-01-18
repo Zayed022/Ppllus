@@ -1,33 +1,104 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs } from "expo-router";
+import { View } from "react-native";
+import Feather from "react-native-vector-icons/Feather";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          height: 60,
+          backgroundColor: "#fff",
+          borderTopWidth: 0.5,
+          borderTopColor: "#e5e5e5",
+        },
+        tabBarItemStyle: {
+          paddingVertical: 6,
+        },
+      }}
+    >
+      {/* Home */}
       <Tabs.Screen
-        name="index"
+        name="feed"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <Feather
+              name="home"
+              size={26}
+              color="#000"
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
+          ),
         }}
       />
+
+      {/* Reels */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <Feather
+              name="play"
+              size={26}
+              color="#000"
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
+          ),
+        }}
+      />
+
+      {/* Create */}
+      <Tabs.Screen
+        name="create"
+        options={{
+          tabBarIcon: () => (
+            <Feather name="plus-square" size={30} color="#000" />
+          ),
+        }}
+      />
+
+      {/* Activity */}
+      <Tabs.Screen
+        name="activity"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View>
+              <Feather
+                name="heart"
+                size={26}
+                color="#000"
+                style={{ opacity: focused ? 1 : 0.7 }}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  right: -2,
+                  top: -2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: "red",
+                }}
+              />
+            </View>
+          ),
+        }}
+      />
+
+      {/* Profile */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <Feather
+              name="user"
+              size={26}
+              color="#000"
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
+          ),
         }}
       />
     </Tabs>

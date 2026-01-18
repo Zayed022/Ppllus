@@ -144,6 +144,22 @@ const userSchema = new Schema(
       default: false,
     },
 
+    mutedStories: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    closeFriends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
     lastLoginAt: {
       type: Date,
     },

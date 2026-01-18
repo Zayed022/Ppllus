@@ -48,5 +48,8 @@ app.use("/api/v1/admin",adminRoute);
 import healthRoute from './routes/health.routes.js'
 app.use("/api/v1/health",healthRoute);
 
+import storyRoute from './routes/story.routes.js'
+app.use("/api/v1/story",storyRoute);
+
 
 export {app}

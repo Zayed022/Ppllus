@@ -40,7 +40,7 @@ export default function LoginScreen() {
       if (!user.isOnboarded) {
         router.replace("/(onboarding)/basic-profile");
       } else {
-        router.replace("/(tabs)");
+        router.replace("/(tabs)/explore");
       }
     } catch (err: any) {
       if (err.response?.status === 401) {

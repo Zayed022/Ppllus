@@ -33,6 +33,13 @@ const storySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    visibility: {
+      type: String,
+      enum: ["PUBLIC", "CLOSE_FRIENDS"],
+      default: "PUBLIC",
+      index: true,
+    },
+    
 
     expiresAt: {
       type: Date,

@@ -1,39 +1,381 @@
 import Story from "../models/story.models.js";
-import storyViewModels from "../models/storyView.models.js";
+import Follow from "../models/follow.models.js";
+import StoryView from "../models/storyView.models.js"
+import StoryHighlight from "../models/storyHighlight.models.js";
+import StoryReaction from "../models/storyReaction.models.js"
+import User from "../models/users.models.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import Redis from "ioredis";
+export const redis = new Redis();
 
 export const createStory = async (req, res) => {
-  const { mediaUrl, mediaType, duration, city } = req.body;
+  try {
+    const { mediaType, duration, city, visibility } = req.body;
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    if (!["IMAGE", "VIDEO"].includes(mediaType)) {
+      return res.status(400).json({ message: "Invalid media type" });
+    }
+    if (!["PUBLIC", "CLOSE_FRIENDS"].includes(visibility)) {
+      return res.status(400).json({ message: "Invalid visibility" });
+    }
 
-  const story = await Story.create({
-    user: req.user.sub,
-    mediaUrl,
-    mediaType,
-    duration,
-    city,
-    expiresAt,
-  });
+    if (mediaType === "VIDEO" && !duration) {
+      return res.status(400).json({ message: "Duration required for video" });
+    }
 
-  res.status(201).json(story);
+    const mediaLocalPath = req.files?.mediaUrl?.[0]?.path;
+    if (!mediaLocalPath) {
+      return res.status(400).json({ message: "Media file is required" });
+    }
+
+    const media = await uploadOnCloudinary(mediaLocalPath);
+    if (!media?.url) {
+      return res.status(500).json({ message: "Upload failed" });
+    }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const story = await Story.create({
+      user: req.user.sub,
+      mediaUrl: media.url,
+      mediaType,
+      duration,
+      city,
+      visibility,
+      expiresAt,
+    });
+
+    res.status(201).json(story);
+  } catch (err) {
+    res.status(500).json({ message: "Story creation failed" });
+  }
 };
 
 export const viewStory = async (req, res) => {
-    const userId = req.user.sub;
-    const { storyId } = req.params;
-  
-    try {
-      await storyViewModels.create({
-        story: storyId,
-        viewer: userId,
-      });
-  
-      await Story.findByIdAndUpdate(storyId, {
-        $inc: { viewsCount: 1 },
-      });
-    } catch (err) {
-      // ignore duplicate view
+  const userId = req.user.sub;
+  const { storyId } = req.params;
+
+  try {
+    const story = await Story.findById(storyId).select("user expiresAt");
+    if (!story) {
+      return res.status(404).json({ message: "Story not found" });
     }
-  
-    res.json({ status: "VIEW_RECORDED" });
-  };
+
+    // Expired
+    if (story.expiresAt < new Date()) {
+      return res.status(410).json({ message: "Story expired" });
+    }
+
+    // Self view not allowed
+    if (story.user.toString() === userId) {
+      return res.json({ status: "OWN_STORY" });
+    }
+
+    // Must follow story owner
+    const isFollowing = await Follow.exists({
+      follower: userId,
+      following: story.user,
+      status: "ACTIVE",
+    });
+
+    if (!isFollowing) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    await StoryView.create({
+      story: storyId,
+      viewer: userId,
+    });
+    
+    // Redis batching
+    await redis.sadd(`story:${storyId}:views`, userId);
+    
+
+   
+  } catch (err) {
+    if (err.code !== 11000) {
+      console.error(err);
+    }
+  }
+
+  res.json({ status: "VIEW_RECORDED" });
+};
+
+export const getStoryFeed = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.sub);
+    const now = new Date();
+
+    const user = await User.findById(userId).select("mutedStories");
+
+    const feed = await Story.aggregate([
+      { $match: { expiresAt: { $gt: now } } },
+    
+      // Populate story owner
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "owner",
+        },
+      },
+      { $unwind: "$owner" },
+    
+      // Exclude muted
+      {
+        $match: {
+          "owner._id": { $nin: user.mutedStories || [] },
+        },
+      },
+    
+      // Follow relationship
+      {
+        $lookup: {
+          from: "follows",
+          let: { storyUser: "$user" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$following", "$$storyUser"] },
+                    { $eq: ["$follower", userId] },
+                    { $eq: ["$status", "ACTIVE"] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "followRelation",
+        },
+      },
+    
+      // Visibility enforcement
+      {
+        $match: {
+          $expr: {
+            $or: [
+              { $eq: ["$user", userId] },
+              {
+                $and: [
+                  { $eq: ["$visibility", "PUBLIC"] },
+                  { $gt: [{ $size: "$followRelation" }, 0] },
+                ],
+              },
+              {
+                $and: [
+                  { $eq: ["$visibility", "CLOSE_FRIENDS"] },
+                  { $in: [userId, "$owner.closeFriends"] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    
+      // Seen check
+      {
+        $lookup: {
+          from: "storyviews",
+          let: { storyId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$story", "$$storyId"] },
+                    { $eq: ["$viewer", userId] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "viewed",
+        },
+      },
+    
+      {
+        $addFields: {
+          seen: { $gt: [{ $size: "$viewed" }, 0] },
+          isSelf: { $eq: ["$user", userId] },
+        },
+      },
+    
+      { $sort: { createdAt: 1 } },
+    
+      {
+        $group: {
+          _id: "$user",
+          stories: {
+            $push: {
+              _id: "$_id",
+              mediaUrl: "$mediaUrl",
+              mediaType: "$mediaType",
+              duration: "$duration",
+              viewsCount: "$viewsCount",
+              createdAt: "$createdAt",
+              seen: "$seen",
+            },
+          },
+          latestStoryAt: { $max: "$createdAt" },
+          hasUnseen: { $max: { $cond: [{ $eq: ["$seen", false] }, 1, 0] } },
+          isSelf: { $max: "$isSelf" },
+        },
+      },
+    
+      { $sort: { isSelf: -1, hasUnseen: -1, latestStoryAt: -1 } },
+    
+      {
+        $project: {
+          user: "$_id",
+          stories: 1,
+          hasUnseen: { $toBool: "$hasUnseen" },
+        },
+      },
+    ]);
+    
+
+    res.status(200).json(feed);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load story feed" });
+  }
+};
+
+export const getStoryViewers = async (req, res) => {
+  const { storyId } = req.params;
+  const userId = req.user.sub;
+
+  const story = await Story.findById(storyId).select("user viewsCount");
+  if (!story) {
+    return res.status(404).json({ message: "Story not found" });
+  }
+
+  if (story.user.toString() !== userId) {
+    return res.status(403).json({ message: "Not allowed" });
+  }
+
+  const viewers = await StoryView
+    .find({ story: storyId })
+    .populate("viewer", "username profileImage")
+    .sort({ createdAt: -1 });
+
+  res.json({
+    viewsCount: story.viewsCount,
+    viewers: viewers.map(v => v.viewer),
+  });
+};
+
+export const deleteStory = async (req, res) => {
+  const { storyId } = req.params;
+  const userId = req.user.sub;
+
+  const story = await Story.findById(storyId);
+  if (!story) {
+    return res.status(404).json({ message: "Story not found" });
+  }
+
+  if (story.user.toString() !== userId) {
+    return res.status(403).json({ message: "Not allowed" });
+  }
+
+  await Story.deleteOne({ _id: storyId });
+  await StoryView.deleteMany({ story: storyId });
+
+  res.json({ status: "STORY_DELETED" });
+};
+
+export const muteStoryUser = async (req, res) => {
+  await User.findByIdAndUpdate(req.user.sub, {
+    $addToSet: { mutedStories: req.params.userId },
+  });
+
+  res.json({ status: "MUTED" });
+};
+
+export const unmuteStoryUser = async (req, res) => {
+  await User.findByIdAndUpdate(req.user.sub, {
+    $pull: { mutedStories: req.params.userId },
+  });
+
+  res.json({ status: "UNMUTED" });
+};
+
+export const reactToStory = async (req, res) => {
+  const { storyId } = req.params;
+  const { emoji } = req.body;
+  const userId = req.user.sub;
+
+  if (!emoji) {
+    return res.status(400).json({ message: "Emoji required" });
+  }
+
+  await StoryReaction.findOneAndUpdate(
+    { story: storyId, user: userId },
+    { emoji },
+    { upsert: true, new: true }
+  );
+
+  res.json({ status: "REACTION_RECORDED" });
+};
+
+export const getStoryReactions = async (req, res) => {
+  const { storyId } = req.params;
+  const userId = req.user.sub;
+
+  const story = await Story.findById(storyId).select("user");
+  if (!story || story.user.toString() !== userId) {
+    return res.status(403).json({ message: "Not allowed" });
+  }
+
+  const reactions = await StoryReaction.find({ story: storyId })
+    .populate("user", "username profileImage");
+
+  res.json(reactions);
+};
+
+export const addStoryToHighlight = async (req, res) => {
+  const { highlightId, storyId } = req.params;
+  const userId = req.user.sub;
+
+  const highlight = await StoryHighlight.findById(highlightId);
+  if (!highlight || highlight.user.toString() !== userId) {
+    return res.status(403).json({ message: "Not allowed" });
+  }
+
+  await StoryHighlight.findByIdAndUpdate(highlightId, {
+    $addToSet: { stories: storyId },
+  });
+
+  res.json({ status: "ADDED_TO_HIGHLIGHT" });
+};
+
+export const getUserHighlights = async (req, res) => {
+  const { userId } = req.params;
+
+  const highlights = await StoryHighlight.find({ user: userId })
+    .populate("stories");
+
+  res.json(highlights);
+};
+
+export const flushStoryViews = async () => {
+  const keys = await redis.keys("story:*:views");
+
+  for (const key of keys) {
+    const storyId = key.split(":")[1];
+    const viewers = await redis.smembers(key);
+
+    if (viewers.length) {
+      await Story.findByIdAndUpdate(storyId, {
+        $inc: { viewsCount: viewers.length },
+      });
+
+      await redis.del(key);
+    }
+  }
+};
+
+
+

@@ -14,8 +14,6 @@ type Gender = "MALE" | "FEMALE" | "OTHER";
 
 export default function DobGender() {
   const router = useRouter();
-  
-
   const [dob, setDob] = useState<Date>(new Date(2000, 0, 1));
   const [showPicker, setShowPicker] = useState(false);
   const [gender, setGender] = useState<Gender | null>(null);

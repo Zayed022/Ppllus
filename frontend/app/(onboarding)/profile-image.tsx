@@ -77,6 +77,7 @@ export default function ProfileImage() {
       }
 
       await api.post("/users/onboarding/complete");
+      router.push("/(feed)/Feed");
 
       
     } catch (error) {
