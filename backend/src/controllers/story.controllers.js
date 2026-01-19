@@ -6,6 +6,7 @@ import StoryReaction from "../models/storyReaction.models.js"
 import User from "../models/users.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import Redis from "ioredis";
+import mongoose from "mongoose";
 export const redis = new Redis();
 
 export const createStory = async (req, res) => {
@@ -207,31 +208,39 @@ export const getStoryFeed = async (req, res) => {
       {
         $group: {
           _id: "$user",
+          username: { $first: "$owner.username" },
+          profileImage: { $first: "$owner.profileImage" },
           stories: {
             $push: {
               _id: "$_id",
               mediaUrl: "$mediaUrl",
               mediaType: "$mediaType",
               duration: "$duration",
-              viewsCount: "$viewsCount",
               createdAt: "$createdAt",
               seen: "$seen",
             },
           },
           latestStoryAt: { $max: "$createdAt" },
-          hasUnseen: { $max: { $cond: [{ $eq: ["$seen", false] }, 1, 0] } },
+          hasUnseen: {
+            $max: {
+              $cond: [{ $eq: ["$seen", false] }, 1, 0],
+            },
+          },
           isSelf: { $max: "$isSelf" },
         },
       },
+      
     
       { $sort: { isSelf: -1, hasUnseen: -1, latestStoryAt: -1 } },
     
       {
         $project: {
-          user: "$_id",
-          stories: 1,
-          hasUnseen: { $toBool: "$hasUnseen" },
-        },
+    user: "$_id",
+    stories: 1,
+    hasUnseen: { $toBool: "$hasUnseen" },
+    username: { $first: "$owner.username" },
+    profileImage: { $first: "$owner.profileImage" },
+  },
       },
     ]);
     
@@ -243,11 +252,36 @@ export const getStoryFeed = async (req, res) => {
   }
 };
 
+export const getMyActiveStories = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const now = new Date();
+
+    const stories = await Story.find({
+      user: userId,
+      expiresAt: { $gt: now },
+    })
+      .sort({ createdAt: 1 }) // oldest → newest (story playback order)
+      .select(
+        "_id mediaUrl mediaType duration viewsCount createdAt expiresAt"
+      );
+
+    res.status(200).json({
+      user: userId,
+      stories,
+      hasStories: stories.length > 0,
+    });
+  } catch (err) {
+    console.error("Get my active stories error:", err);
+    res.status(500).json({ message: "Failed to fetch stories" });
+  }
+};
+
 export const getStoryViewers = async (req, res) => {
   const { storyId } = req.params;
   const userId = req.user.sub;
 
-  const story = await Story.findById(storyId).select("user viewsCount");
+  const story = await Story.findById(storyId).select("user");
   if (!story) {
     return res.status(404).json({ message: "Story not found" });
   }
@@ -262,10 +296,11 @@ export const getStoryViewers = async (req, res) => {
     .sort({ createdAt: -1 });
 
   res.json({
-    viewsCount: story.viewsCount,
+    viewsCount: viewers.length, // ✅ FIX
     viewers: viewers.map(v => v.viewer),
   });
 };
+
 
 export const deleteStory = async (req, res) => {
   const { storyId } = req.params;

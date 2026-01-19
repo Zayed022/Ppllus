@@ -12,6 +12,7 @@ import {
   register,
   login,
   refreshAccessToken,
+  getMyProfileImage,
 } from "../controllers/users.controllers.js";
 import { authenticate } from "../middlewares/auth.middlewares.js";
 import { rateLimiter } from "../middlewares/rateLimiter.js";
@@ -42,6 +43,12 @@ router.route("/profile/image").patch(
   ]),
   authenticate, updateProfileImage
 )  // done
+
+router.get(
+  "/me/profile-image",
+  authenticate,
+  getMyProfileImage
+);
 router.post("/onboarding/complete", authenticate, completeOnboarding);   // done
 router.get("/search", authenticate, searchUsers);
 router.patch("/privacy", authenticate, updatePrivacy);

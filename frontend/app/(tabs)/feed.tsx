@@ -1,33 +1,20 @@
-import { useEffect, useState } from "react";
-import { View, Modal, ScrollView } from "react-native";
-import { StoriesTray } from "../../components/stories/StoriesTray";
-import { StoryViewer } from "../../components/stories/StoryViewer";
-import { fetchStoryFeed, StoryUser } from "../../services/story.service";
+import { View, StyleSheet } from "react-native";
+import HomeHeader from "@/components/HomeHeader";
+import StoriesRow from "@/components/StoriesRow";
 
-export default function FeedScreen() {
-  const [stories, setStories] = useState<StoryUser[]>([]);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetchStoryFeed().then(setStories);
-  }, []);
-
+export default function Feed() {
   return (
-    <View style={{ flex: 1 }}>
-      <StoriesTray data={stories} onOpen={setActiveIndex} />
-
-      {/* Your existing feed posts below */}
-      <ScrollView />
-
-      <Modal visible={activeIndex !== null} animationType="fade">
-        {activeIndex !== null && (
-          <StoryViewer
-            data={stories}
-            userIndex={activeIndex}
-            onClose={() => setActiveIndex(null)}
-          />
-        )}
-      </Modal>
+    <View style={styles.container}>
+      <HomeHeader />
+      <StoriesRow />
+      {/* Feed posts will come next */}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+});

@@ -30,3 +30,20 @@ export const initSocket = (httpServer) => {
 
   return io;
 };
+
+import { getUserSocket } from "../realtime/presence.js";
+import { markConversationSeenService } from "../services/message.service.js";
+
+socket.on("conversation_seen", async ({ conversationId, otherUserId }) => {
+  await markConversationSeenService(conversationId, socket.userId);
+
+  const otherSocket = await getUserSocket(otherUserId);
+
+  if (otherSocket) {
+    io.to(otherSocket).emit("messages_seen", {
+      conversationId,
+      seenBy: socket.userId,
+    });
+  }
+});
+

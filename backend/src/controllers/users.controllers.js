@@ -178,6 +178,29 @@ export const updateProfileImage = async (req, res) => {
     res.json(user);
 };
 
+export const getMyProfileImage = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+
+    const user = await User.findById(userId).select(
+      "profileImage username"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      userId: user._id,
+      username: user.username,
+      profileImage: user.profileImage || null,
+    });
+  } catch (err) {
+    console.error("Get profile image error:", err);
+    res.status(500).json({ message: "Failed to fetch profile image" });
+  }
+};
+
 export const completeOnboarding = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.sub,
