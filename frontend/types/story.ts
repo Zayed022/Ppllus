@@ -8,12 +8,11 @@ export type Story = {
   
   export type StoryGroup = {
     user: string;
-    username?: string;
+    username: string;
     profileImage?: string | null;
     stories: Story[];
     hasUnseen: boolean;
-  
-    /** frontend-only */
-    isSelf?: boolean;
+    isSelf: boolean;
   };
+  
   

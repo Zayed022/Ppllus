@@ -51,5 +51,8 @@ app.use("/api/v1/health",healthRoute);
 import storyRoute from './routes/story.routes.js'
 app.use("/api/v1/story",storyRoute);
 
+import feedRoute from './routes/feed.routes.js'
+app.use("/api/v1/feed",feedRoute);
+
 
 export {app}

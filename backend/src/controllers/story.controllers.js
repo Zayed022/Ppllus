@@ -107,12 +107,44 @@ export const getStoryFeed = async (req, res) => {
     const userId = new mongoose.Types.ObjectId(req.user.sub);
     const now = new Date();
 
-    const user = await User.findById(userId).select("mutedStories");
+    const user = await User.findById(userId).select("mutedStories username profileImage");
 
+    /**
+     * ============================
+     * 1️⃣ SELF STORIES (ALWAYS)
+     * ============================
+     */
+    const selfStories = await Story.find({
+      user: userId,
+      expiresAt: { $gt: now },
+    })
+      .sort({ createdAt: 1 })
+      .select("_id mediaUrl mediaType duration createdAt");
+
+    const selfGroup = {
+      user: userId.toString(),
+      username: user.username,
+      profileImage: user.profileImage,
+      stories: selfStories.map(s => ({
+        _id: s._id,
+        mediaUrl: s.mediaUrl,
+        mediaType: s.mediaType,
+        duration: s.duration,
+        createdAt: s.createdAt,
+        seen: true, // self stories are always seen
+      })),
+      hasUnseen: false,
+      isSelf: true,
+    };
+
+    /**
+     * ============================
+     * 2️⃣ FOLLOWED USERS STORIES
+     * ============================
+     */
     const feed = await Story.aggregate([
       { $match: { expiresAt: { $gt: now } } },
-    
-      // Populate story owner
+
       {
         $lookup: {
           from: "users",
@@ -122,15 +154,13 @@ export const getStoryFeed = async (req, res) => {
         },
       },
       { $unwind: "$owner" },
-    
-      // Exclude muted
+
       {
         $match: {
           "owner._id": { $nin: user.mutedStories || [] },
         },
       },
-    
-      // Follow relationship
+
       {
         $lookup: {
           from: "follows",
@@ -151,13 +181,11 @@ export const getStoryFeed = async (req, res) => {
           as: "followRelation",
         },
       },
-    
-      // Visibility enforcement
+
       {
         $match: {
           $expr: {
             $or: [
-              { $eq: ["$user", userId] },
               {
                 $and: [
                   { $eq: ["$visibility", "PUBLIC"] },
@@ -174,8 +202,7 @@ export const getStoryFeed = async (req, res) => {
           },
         },
       },
-    
-      // Seen check
+
       {
         $lookup: {
           from: "storyviews",
@@ -195,16 +222,13 @@ export const getStoryFeed = async (req, res) => {
           as: "viewed",
         },
       },
-    
+
       {
         $addFields: {
           seen: { $gt: [{ $size: "$viewed" }, 0] },
-          isSelf: { $eq: ["$user", userId] },
         },
       },
-    
-      { $sort: { createdAt: 1 } },
-    
+
       {
         $group: {
           _id: "$user",
@@ -226,26 +250,39 @@ export const getStoryFeed = async (req, res) => {
               $cond: [{ $eq: ["$seen", false] }, 1, 0],
             },
           },
-          isSelf: { $max: "$isSelf" },
         },
       },
-      
-    
-      { $sort: { isSelf: -1, hasUnseen: -1, latestStoryAt: -1 } },
-    
+
+      { $sort: { hasUnseen: -1, latestStoryAt: -1 } },
+
       {
         $project: {
-    user: "$_id",
-    stories: 1,
-    hasUnseen: { $toBool: "$hasUnseen" },
-    username: { $first: "$owner.username" },
-    profileImage: { $first: "$owner.profileImage" },
-  },
+          _id: 0,
+          user: "$_id",
+          username: 1,
+          profileImage: 1,
+          stories: 1,
+          hasUnseen: { $toBool: "$hasUnseen" },
+          isSelf: { $literal: false },
+        },
       },
     ]);
-    
 
-    res.status(200).json(feed);
+    /**
+     * ============================
+     * 3️⃣ REMOVE SELF IF PRESENT
+     * ============================
+     */
+    const filteredFeed = feed.filter(
+      g => g.user.toString() !== userId.toString()
+    );
+
+    /**
+     * ============================
+     * 4️⃣ FINAL RESPONSE
+     * ============================
+     */
+    res.status(200).json([selfGroup, ...filteredFeed]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to load story feed" });
@@ -274,6 +311,28 @@ export const getMyActiveStories = async (req, res) => {
   } catch (err) {
     console.error("Get my active stories error:", err);
     res.status(500).json({ message: "Failed to fetch stories" });
+  }
+};
+
+export const getUserStories = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId" });
+  }
+
+  try {
+    const stories = await Story.find({
+      user: userId,
+      expiresAt: { $gt: new Date() },
+    })
+      .sort({ createdAt: 1 })
+      .select("_id mediaUrl mediaType duration createdAt");
+
+    res.json(stories);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load stories" });
   }
 };
 

@@ -13,6 +13,7 @@ import {
   addStoryToHighlight,
   getUserHighlights,
   getMyActiveStories,
+  getUserStories,
 } from "../controllers/story.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 
@@ -54,6 +55,7 @@ router.get("/feed", authenticate, getStoryFeed);
 router.post("/:storyId/view", authenticate, viewStory);
 
 router.get("/me", authenticate, getMyActiveStories);
+router.get("/:userId",authenticate,getUserStories)
 
 /**
  * Get viewers of a story (owner only)
@@ -145,9 +147,9 @@ User A ID : 69653edba7f1a44bbb86fe40
 user A Token : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTY1M2VkYmE3ZjFhNDRiYmI4NmZlNDAiLCJlbWFpbCI6InpheWVkYW5zMDIyQGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiemF5ZWRhbnMwMiIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzY4ODMwMjg1LCJleHAiOjE3NzAxMjYyODUsImF1ZCI6InBwbGx1cy1hcHAiLCJpc3MiOiJwcGxsdXMtYXV0aCJ9.kdYx7UMGnng6OwtBXkT6nLb4UWylTFKem33AhLzmJJE
 
 User B ID: 6968b7ce8df01017fa2a76e8
-User B Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTY4YjdjZThkZjAxMDE3ZmEyYTc2ZTgiLCJlbWFpbCI6InpheWVkYW5zMDg4QGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiemF5ZWQuYW5zYXJpLjA4Iiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3Njg4MzAxODUsImV4cCI6MTc3MDEyNjE4NSwiYXVkIjoicHBsbHVzLWFwcCIsImlzcyI6InBwbGx1cy1hdXRoIn0.1sqKWYYgaD9msdRi-6RsNmo7f0fuJEPPi2Jgbdh2OzE
+User B Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTY4YjdjZThkZjAxMDE3ZmEyYTc2ZTgiLCJlbWFpbCI6InpheWVkYW5zMDg4QGdtYWlsLmNvbSIsInVzZXJuYW1lIjoiemF5ZWQwOCIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzY4ODk1MDgzLCJleHAiOjE3NzAxOTEwODMsImF1ZCI6InBwbGx1cy1hcHAiLCJpc3MiOiJwcGxsdXMtYXV0aCJ9.cR9WJvO4vph0OwpGvH9pR1o_GDt31eCiDyOtMStZNm8
 
 User C ID: 696a4a62c0a6519c80d28fe5
-User C Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTZhNGE2MmMwYTY1MTljODBkMjhmZTUiLCJlbWFpbCI6InpheWVkYW5zMDlAZ21haWwuY29tIiwidXNlcm5hbWUiOiJ6YXllZCIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzY4ODMyMDEwLCJleHAiOjE3NzAxMjgwMTAsImF1ZCI6InBwbGx1cy1hcHAiLCJpc3MiOiJwcGxsdXMtYXV0aCJ9.FGICyjV-KPs0avOJ-0TmVteDicbc5Q2aLMbtmgWPMt4
+User C Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTZhNGE2MmMwYTY1MTljODBkMjhmZTUiLCJlbWFpbCI6InpheWVkYW5zMDlAZ21haWwuY29tIiwidXNlcm5hbWUiOiJ6YXllZCIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzY4ODk1MDQyLCJleHAiOjE3NzAxOTEwNDIsImF1ZCI6InBwbGx1cy1hcHAiLCJpc3MiOiJwcGxsdXMtYXV0aCJ9.5cP5uyFKHdw_m2yTcmYtRA4wXZtUl70dw1NKkVG4jn0
 
 */

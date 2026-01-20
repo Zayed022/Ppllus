@@ -39,6 +39,12 @@
           }
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to photos to upload stories."
+        }
+      ],
       "expo-secure-store"
     ],
     "experiments": {

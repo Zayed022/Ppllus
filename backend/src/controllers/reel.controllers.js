@@ -62,6 +62,28 @@ export const getReelStats = async (reelId) => {
     return reel;
 };
 
+export const getFollowingReels = async (userId, limit = 3) => {
+  const following = await Follow.find({
+    follower: userId,
+    status: "ACTIVE",
+  }).select("following");
+
+  const creatorIds = following.map(f => f.following);
+
+  const reels = await Reel.find({
+    creator: { $in: creatorIds },
+    "moderation.status": "ACTIVE",
+    isDeleted: false,
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate("creator", "username profileImage");
+
+  return reels.map(reel => ({
+    type: "REEL",
+    reel,
+  }));
+};
 
 
 
