@@ -11,7 +11,9 @@ const reelSchema = new Schema(
 
     videoUrl: { type: String, required: true },
 
-    thumbnailUrl: String,
+    thumbnailUrl: {
+      type: String,
+    },
 
     duration: { type: Number, required: true }, // seconds
 

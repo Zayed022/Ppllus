@@ -6,7 +6,7 @@ import { getHomeFeed } from "@/services/feed.api";
 import { useEffect, useState } from "react";
 import PostCard from "./feed/PostCard";
 
-export default function Feed() {
+export default function HomeFeed() {
   const [items, setItems] = useState<any[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
 

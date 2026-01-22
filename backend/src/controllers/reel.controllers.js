@@ -1,13 +1,34 @@
 import Reel from "../models/reel.models.js";
 import Follow from "../models/follow.models.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const createReel = async (req, res) => {
-  const { videoUrl, thumbnailUrl, duration, categories, city } = req.body;
+  const {duration, categories, city } = req.body;
+
+  const videoUrlLocalPath = req.files?.videoUrl[0]?.path;
+    console.log(videoUrlLocalPath);
+    if (!videoUrlLocalPath) {
+      return res.status(400).json({ message: "Video file is required" });
+    }
+    const video = await uploadOnCloudinary(videoUrlLocalPath);
+    if (!video) {
+      return res.status(400).json({ message: "Video file is required" });
+    } 
+
+    const thumbnailUrlLocalPath = req.files?.thumbnailUrl[0]?.path;
+    console.log(thumbnailUrlLocalPath);
+    if (!thumbnailUrlLocalPath) {
+      return res.status(400).json({ message: "Thumbnail is required" });
+    }
+    const thumbnail = await uploadOnCloudinary(thumbnailUrlLocalPath);
+    if (!thumbnail) {
+      return res.status(400).json({ message: "Thumbnail file is required" });
+    } 
 
   const reel = await Reel.create({
     creator: req.user.sub,
-    videoUrl,
-    thumbnailUrl,
+    videoUrl: video.url,
+    thumbnailUrl: thumbnail.url,
     duration,
     categories,
     city,
@@ -17,6 +38,7 @@ export const createReel = async (req, res) => {
 };
 
 import { getRedis } from "../db/redis.js";
+
 const redis = getRedis();
 
 

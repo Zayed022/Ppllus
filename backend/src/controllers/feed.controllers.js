@@ -71,7 +71,7 @@ export const getStoryFeed = async (req, res) => {
   res.json(stories);
 };
 
-export const getHomeFeed = async (req, res) => {
+export const getHomeFeed2 = async (req, res) => {
   const reels = await redis.zrevrange(
     "feed:explore",
     0,

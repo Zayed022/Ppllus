@@ -45,9 +45,9 @@ import {
           formData.append("duration", "5");
         }
   
-        await api.post("/story", formData);
+        await api.post("/story/", formData);
   
-        router.replace("/"); // back to feed
+        router.replace("/feed"); // back to feed
       } catch (err) {
         console.error("Story upload failed", err);
       } finally {
