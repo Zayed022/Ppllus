@@ -57,5 +57,11 @@ app.use("/api/v1/feed",feedRoute);
 import postRoute from './routes/post.routes.js'
 app.use("/api/v1/post",postRoute);
 
+import commentRoute from './routes/comment.routes.js'
+app.use("/api/v1/comment",commentRoute);
+
+import notificationRoute from './routes/notification.routes.js'
+app.use("/api/v1/notification",notificationRoute);
+
 
 export {app}

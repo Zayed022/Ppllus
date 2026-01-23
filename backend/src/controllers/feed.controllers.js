@@ -6,6 +6,7 @@ import { getHomeFeed } from "../services/feed/homeFeed.service.js";
 import { getExploreFeed } from "../services/feed/exploreFeed.service.js";
 import { getCategoryFeed } from "../services/feed/categoryFeed.service.js";
 import { scoreReel } from "../workers/feedScore.worker.js";
+import { normalizeUserSignals } from "../services/feed/normalizeSignals.js";
 const redis = getRedis();
 
 export const getReelFeed = async (req, res) => {
@@ -20,16 +21,21 @@ export const getReelFeed = async (req, res) => {
   const candidates = await getFeedCandidates(userId);
 
   const userSignals = await redis.get(`user:signals:${userId}`);
-  const parsedSignals = JSON.parse(userSignals || "{}");
+  const rawSignals = JSON.parse(userSignals || "{}");
+const normalizedSignals = normalizeUserSignals(rawSignals);
 
-  const ranked = candidates
-    .map(reel => ({
-      reel,
-      score: scoreReel({ reel, userSignals: parsedSignals }),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 30)
-    .map(r => r.reel);
+const ranked = candidates
+.map(reel => ({
+  reel,
+  score: scoreReel({
+    reel,
+    userSignals: normalizedSignals,
+  }),
+}))
+.sort((a, b) => b.score - a.score)
+.slice(0, 30)
+.map(r => r.reel);
+
 
   await redis.set(cacheKey, JSON.stringify(ranked), "EX", 30);
 
@@ -88,8 +94,9 @@ export const getExploreReels = async (req, res) => {
     49
   );
 
-  res.json(reels);
+  res.json(reels.map(r => JSON.parse(r)));
 };
+
 
 export const getReelsByCategory = async (req, res) => {
   const { category } = req.params;
@@ -113,13 +120,20 @@ export const homeFeed = async (req, res) => {
   res.json(data);
 };
 
-export const exploreFeed = async (req, res) => {
-  const reels = await getExploreFeed({
-    limit: Number(req.query.limit || 20),
-  });
+export const exploreFeed = async ({ limit = 20 }) => {
+  const reelIds = await redis.zrevrange("feed:explore", 0, limit - 1);
+  if (!reelIds.length) return [];
 
-  res.json(reels);
+  const reels = await Reel.find({
+    _id: { $in: reelIds },
+    isDeleted: false,
+  }).lean();
+
+  const map = new Map(reels.map(r => [String(r._id), r]));
+
+  return reelIds.map(id => map.get(id)).filter(Boolean);
 };
+
 
 export const categoryFeed = async (req, res) => {
   const data = await getCategoryFeed({

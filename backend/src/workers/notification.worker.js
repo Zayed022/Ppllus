@@ -1,20 +1,18 @@
 import { Worker } from "bullmq";
 import Notification from "../models/notification.models.js";
-import { redis } from "../db/redis.js";
 import { io } from "../realtime/io.instance.js";
+import { redis } from "../db/redis.js";
 
 const buildMessage = (event) => {
   switch (event.type) {
-    case "LIKE":
-      return "liked your reel";
+    case "LIKE_POST":
+      return "liked your post";
+    case "COMMENT_POST":
+      return "commented on your post";
     case "FOLLOW":
       return "started following you";
-    case "COMMENT":
-      return "commented on your post";
-    case "OFFER_REDEEM":
-      return "redeemed an offer";
-    case "WALLET_EARN":
-      return "earned points";
+    case "LIKE_COMMENT":
+      return "liked your comment";
     default:
       return "You have a new notification";
   }
@@ -25,7 +23,7 @@ export const notificationWorker = new Worker(
   async (job) => {
     const event = job.data;
 
-    // 🚫 Self notifications
+    // 🚫 No self notifications
     if (event.actorId === event.targetUserId) return;
 
     const notification = await Notification.create({
@@ -36,27 +34,13 @@ export const notificationWorker = new Worker(
       message: buildMessage(event),
     });
 
-    // 🔴 Realtime push
-    io.to(`user:${event.targetUserId}`).emit("notification", {
+    // 🔴 Realtime socket push
+    io.to(`user:${event.targetUserId}`).emit("notification:new", {
       id: notification._id,
       type: notification.type,
       message: notification.message,
+      createdAt: notification.createdAt,
     });
   },
   { connection: redis }
-);
-
-import { pushQueue } from "../queues/push.queue.js";
-
-await pushQueue.add(
-  "SEND_PUSH",
-  {
-    userId: event.targetUserId,
-    type: event.type,
-    entityId: event.entityId,
-  },
-  {
-    removeOnComplete: true,
-    attempts: 3,
-  }
 );

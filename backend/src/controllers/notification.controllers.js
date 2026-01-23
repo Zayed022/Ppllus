@@ -18,21 +18,47 @@ export const registerDeviceToken = async (req, res) => {
 };
 
 export const getNotifications = async (req, res) => {
-  const notifications = await Notification.find({
-    user: req.user.sub,
-  })
-    .sort({ createdAt: -1 })
-    .limit(50);
+  const userId = req.user.sub;
+  const { cursor, limit = 20 } = req.query;
+
+  const query = { user: userId };
+
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+  const notifications = await Notification.find(query)
+    .sort({ _id: -1 })
+    .limit(Number(limit))
+    .populate("actor", "username profileImage")
+    .lean();
 
   res.json(notifications);
 };
 
-export const markAsRead = async (req, res) => {
-  await Notification.updateMany(
-    { user: req.user.sub, isRead: false },
+export const markNotificationRead = async (req, res) => {
+  const { notificationId } = req.params;
+  const userId = req.user.sub;
+
+  await Notification.updateOne(
+    { _id: notificationId, user: userId },
     { $set: { isRead: true } }
   );
 
-  res.json({ success: true });
+  res.json({ status: "READ" });
 };
+
+export const markAllNotificationsRead = async (req, res) => {
+  const userId = req.user.sub;
+
+  await Notification.updateMany(
+    { user: userId, isRead: false },
+    { $set: { isRead: true } }
+  );
+
+  res.json({ status: "ALL_READ" });
+};
+
+
+
 

@@ -2,6 +2,7 @@ import Post from "../models/post.models.js";
 import Follow from "../models/follow.models.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import mongoose from "mongoose";
+import PostLike from "../models/postLike.models.js"
 
 
 
@@ -13,16 +14,12 @@ export const createPost = async (req, res) => {
       return res.status(400).json({ message: "Media file is required" });
     }
 
-    const mediaDocs = [];
+    const uploadedMedia = [];
 
     for (const file of req.files.media) {
       const uploaded = await uploadOnCloudinary(file.path);
 
-      if (!uploaded?.url) {
-        return res.status(500).json({ message: "Media upload failed" });
-      }
-
-      mediaDocs.push({
+      uploadedMedia.push({
         url: uploaded.url,
         type: uploaded.resource_type === "video" ? "VIDEO" : "IMAGE",
         width: uploaded.width,
@@ -31,10 +28,10 @@ export const createPost = async (req, res) => {
     }
 
     const post = await Post.create({
-      author: req.user.sub,
-      media: mediaDocs, // ✅ ARRAY OF OBJECTS
+      author: req.user.sub, // ✅ REQUIRED
+      media: uploadedMedia, // ✅ ARRAY OF OBJECTS
       caption,
-      tags: Array.isArray(tags) ? tags : tags?.split(","),
+      tags,
       visibility,
       locationTag,
     });
@@ -45,6 +42,7 @@ export const createPost = async (req, res) => {
     res.status(500).json({ message: "Failed to create post" });
   }
 };
+
 
 
 
@@ -196,20 +194,50 @@ export const toggleLikePost = async (req, res) => {
   const { postId } = req.params;
   const userId = req.user.sub;
 
-  const Like = mongoose.model("Post");
+  const Like = mongoose.model("PostLike");
 
-  const existing = await Like.findOne({ post: postId, user: userId });
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (existing) {
-    await existing.deleteOne();
-    await Post.findByIdAndUpdate(postId, { $inc: { likesCount: -1 } });
-    return res.json({ liked: false });
+  try {
+    const existing = await Like.findOne(
+      { post: postId, user: userId },
+      null,
+      { session }
+    );
+
+    if (existing) {
+      await existing.deleteOne({ session });
+      await Post.findByIdAndUpdate(
+        postId,
+        { $inc: { likesCount: -1 } },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return res.json({ liked: false });
+    }
+
+    await Like.create(
+      [{ post: postId, user: userId }],
+      { session }
+    );
+
+    await Post.findByIdAndUpdate(
+      postId,
+      { $inc: { likesCount: 1 } },
+      { session }
+    );
+
+    await session.commitTransaction();
+    res.json({ liked: true });
+  } catch (err) {
+    await session.abortTransaction();
+    console.error("Toggle like error:", err);
+    res.status(500).json({ message: "Failed to toggle like" });
+  } finally {
+    session.endSession();
   }
-
-  await Like.create({ post: postId, user: userId });
-  await Post.findByIdAndUpdate(postId, { $inc: { likesCount: 1 } });
-
-  res.json({ liked: true });
 };
 
 export const deletePost = async (req, res) => {

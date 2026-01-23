@@ -43,21 +43,30 @@ export const scoreReel = ({
 }) => {
   let score = 0;
 
-  if (userSignals.following.has(reel.creator.toString())) {
+  if (
+    userSignals?.following &&
+    userSignals.following.has(reel.creator.toString())
+  ) {
     score += 40;
   }
 
-  if (userSignals.categories.hasAny(reel.categories)) {
+  if (
+    userSignals?.categories &&
+    reel.categories?.some(cat => userSignals.categories.has(cat))
+  ) {
     score += 25;
   }
 
-  const ageHours = (now - reel.createdAt.getTime()) / 36e5;
-  score += Math.max(0, 10 - ageHours); // freshness decay
+  const ageHours =
+    (now - new Date(reel.createdAt).getTime()) / 36e5;
 
-  score += Math.log1p(reel.viewsCount) * 5;
-  score += reel.likesCount * 2;
-  score += reel.sharesCount * 3;
+  score += Math.max(0, 10 - ageHours);
+
+  score += Math.log1p(reel.viewsCount || 0) * 5;
+  score += (reel.likesCount || 0) * 2;
+  score += (reel.sharesCount || 0) * 3;
 
   return score;
 };
+
 
