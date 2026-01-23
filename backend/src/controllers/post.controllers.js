@@ -43,9 +43,6 @@ export const createPost = async (req, res) => {
   }
 };
 
-
-
-
 export const getPostFeed = async (req, res) => {
   const userId = req.user.sub;
   const limit = Number(req.query.limit || 10);
@@ -70,15 +67,32 @@ export const getPostFeed = async (req, res) => {
   const posts = await Post.find(query)
     .populate("author", "username profileImage")
     .sort({ createdAt: -1 })
-    .limit(limit + 1);
+    .limit(limit + 1)
+    .lean();
 
   const hasMore = posts.length > limit;
   if (hasMore) posts.pop();
 
+  /** 🔴 IMPORTANT PART: Fetch likes by THIS USER */
+  const PostLike = mongoose.model("PostLike");
+
+  const likedDocs = await PostLike.find({
+    user: userId,
+    post: { $in: posts.map(p => p._id) },
+  }).select("post");
+
+  const likedSet = new Set(
+    likedDocs.map(l => l.post.toString())
+  );
+
   res.json({
     items: posts.map(p => ({
       type: "POST",
-      ...p.toObject(),
+      post: {
+        ...p,
+        isLiked: likedSet.has(p._id.toString()),
+        isOwnPost: p.author._id.toString() === userId,
+      },
     })),
     nextCursor: hasMore
       ? posts[posts.length - 1].createdAt

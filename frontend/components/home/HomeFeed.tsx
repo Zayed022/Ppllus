@@ -1,5 +1,5 @@
 import { FlatList } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getHomeFeed } from "@/services/feed.api";
 import { FeedItem } from "@/types/feed";
 import StoriesRow from "@/components/StoriesRow";
@@ -12,6 +12,9 @@ export default function HomeFeed() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // 🔑 Track IDs already rendered
+  const seenIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     loadFeed();
   }, []);
@@ -22,7 +25,21 @@ export default function HomeFeed() {
     setLoadingMore(true);
     const data = await getHomeFeed(cursor);
 
-    setItems(prev => [...prev, ...data.items]);
+    const uniqueItems: FeedItem[] = [];
+
+    for (const item of data.items) {
+      const id =
+        item.type === "POST"
+          ? `post-${item.post._id}`
+          : `reel-${item.reel._id}`;
+
+      if (!seenIds.current.has(id)) {
+        seenIds.current.add(id);
+        uniqueItems.push(item);
+      }
+    }
+
+    setItems(prev => [...prev, ...uniqueItems]);
     setCursor(data.nextCursor);
     setLoadingMore(false);
   };
@@ -30,8 +47,11 @@ export default function HomeFeed() {
   return (
     <FlatList
       data={items}
-      keyExtractor={(_, i) => i.toString()}
-      
+      keyExtractor={(item) =>
+        item.type === "POST"
+          ? `post-${item.post._id}`
+          : `reel-${item.reel._id}`
+      }
       renderItem={({ item }) => {
         if (item.type === "POST") {
           return <PostCard post={item.post} />;
@@ -47,3 +67,5 @@ export default function HomeFeed() {
     />
   );
 }
+
+

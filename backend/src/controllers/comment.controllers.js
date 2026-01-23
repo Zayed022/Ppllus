@@ -61,29 +61,42 @@ export const createComment = async (req, res) => {
 };
 
 export const getComments = async (req, res) => {
-    const { postId, reelId } = req.params;
-    const { cursor, limit = 20 } = req.query;
-  
-    const query = {
-      isDeleted: false,
-      parentComment: null,
-    };
-  
-    if (postId) query.post = postId;
-    if (reelId) query.reel = reelId;
-  
-    if (cursor) {
-      query._id = { $lt: cursor };
-    }
-  
-    const comments = await Comment.find(query)
-      .sort({ _id: -1 })
-      .limit(Number(limit))
-      .populate("user", "username profileImage")
-      .lean();
-  
-    res.json(comments);
+  const { postId, reelId } = req.params;
+  const { cursor, limit = 20 } = req.query;
+
+  const query = {
+    isDeleted: false,
+    parentComment: null,
+  };
+
+  if (postId) query.post = postId;
+  if (reelId) query.reel = reelId;
+
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+  const comments = await Comment.find(query)
+    .sort({ _id: -1 })
+    .limit(Number(limit))
+    .populate({
+      path: "user",
+      select: "username profileImage",
+      options: { lean: true },
+    })
+    .lean();
+
+  res.json(
+    comments.map((c) => ({
+      ...c,
+      user: {
+        ...c.user,
+        profileImage: c.user?.profileImage || null,
+      },
+    }))
+  );
 };
+
 
 export const getCommentReplies = async (req, res) => {
     const { commentId } = req.params;
