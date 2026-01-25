@@ -1,30 +1,14 @@
 import { View, TextInput, Pressable, Text, StyleSheet } from "react-native";
-import { useState } from "react";
 
-export default function CommentInput({
-  onSend,
-}: {
-  onSend: (text: string) => void;
-}) {
-  const [text, setText] = useState("");
-
-  const submit = () => {
-    if (!text.trim()) return;
-    onSend(text);
-    setText("");
-  };
-
+export default function CommentInput({ onSend }: any) {
   return (
     <View style={styles.container}>
       <TextInput
         placeholder="Add a comment…"
-        value={text}
-        onChangeText={setText}
         style={styles.input}
         multiline
       />
-
-      <Pressable onPress={submit}>
+      <Pressable>
         <Text style={styles.post}>Post</Text>
       </Pressable>
     </View>
@@ -34,16 +18,21 @@ export default function CommentInput({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    padding: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: "#ddd",
     alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
   },
+
   input: {
     flex: 1,
     fontSize: 14,
     paddingVertical: 6,
+    maxHeight: 100,
   },
+
   post: {
     color: "#0095f6",
     fontWeight: "600",

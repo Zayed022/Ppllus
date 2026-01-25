@@ -24,3 +24,8 @@ export const createPostComment = async (
   });
   return res.data;
 };
+
+export const getMyPosts = async () => {
+  const res = await api.get("/post/me");
+  return res.data;
+};

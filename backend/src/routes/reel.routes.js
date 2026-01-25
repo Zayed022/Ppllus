@@ -2,13 +2,22 @@ import express from "express";
 import { authenticate } from "../middlewares/auth.middlewares.js";
 import {
   createReel,
+  deleteReel,
+  getMyReels,
+  getReelById,
   getReelFeed,
+  getUserReels,
+  incrementReelView,
+  getReelComments
 } from "../controllers/reel.controllers.js";
 
 import {
   recordReelView,
   likeReel,
   shareReel,
+  toggleLikeReel,
+  createReelComment, 
+  incrementReelView2,
 } from "../controllers/engagement.controllers.js";
 import { rateLimiter } from "../middlewares/rateLimiter.js";
 import { upload } from "../middlewares/multer.middlewares.js";
@@ -20,17 +29,26 @@ const engagementLimiter = rateLimiter({
   windowSec: 60,
 });
 
-router.post("/", authenticate,
-  upload.fields([
-    { name: "videoUrl", maxCount: 1 },
-    { name: "thumbnailUrl", maxCount: 1 },                    //done
-  ]),
-  createReel);
-router.get("/feed", authenticate, getReelFeed);
+router.post("/", authenticate, upload.fields([
+  { name: "videoUrl", maxCount: 1 },
+  { name: "thumbnailUrl", maxCount: 1 },
+]), createReel);
 
-router.post("/:reelId/view", authenticate,engagementLimiter, recordReelView);
-router.post("/:reelId/like", authenticate, engagementLimiter, likeReel);
+router.get("/feed", authenticate, getReelFeed);
+router.get("/me", authenticate, getMyReels);
+router.get("/user/:userId", getUserReels);
+router.get("/:reelId", getReelById);
+
+router.post("/:reelId/view", engagementLimiter, recordReelView);
+router.post("/:reelId/like", authenticate, engagementLimiter, toggleLikeReel);
 router.post("/:reelId/share", authenticate, engagementLimiter, shareReel);
+
+router.post("/:reelId/comments", authenticate, createReelComment);
+router.get("/:reelId/comments", authenticate, getReelComments);
+
+router.delete("/:reelId", authenticate, deleteReel);
+
+
 
 export default router;
 

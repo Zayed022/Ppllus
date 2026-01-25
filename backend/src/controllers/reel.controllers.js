@@ -1,5 +1,6 @@
 import Reel from "../models/reel.models.js";
 import Follow from "../models/follow.models.js";
+import Comment from "../models/comment.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 export const createReel = async (req, res) => {
@@ -38,6 +39,7 @@ export const createReel = async (req, res) => {
 };
 
 import { getRedis } from "../db/redis.js";
+import mongoose from "mongoose";
 
 const redis = getRedis();
 
@@ -106,6 +108,145 @@ export const getFollowingReels = async (userId, limit = 3) => {
     reel,
   }));
 };
+
+export const getMyReels = async (req, res) => {
+  const userId = req.user.sub;
+  const { cursor, limit = 20 } = req.query;
+
+  const query = {
+    creator: userId,
+    isDeleted: false,
+  };
+
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+  const reels = await Reel.find(query)
+    .sort({ _id: -1 })
+    .limit(Number(limit))
+    .select(
+      "videoUrl thumbnailUrl duration categories city viewsCount likesCount sharesCount moderation createdAt"
+    )
+    .lean();
+
+  res.json(reels);
+};
+
+export const getUserReels = async (req, res) => {
+  const { userId } = req.params;
+  const { cursor, limit = 20 } = req.query;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId" });
+  }
+
+  const query = {
+    creator: userId,
+    isDeleted: false,
+    "moderation.status": "ACTIVE",
+  };
+
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+  const reels = await Reel.find(query)
+    .sort({ _id: -1 })
+    .limit(Number(limit))
+    .select(
+      "videoUrl thumbnailUrl duration categories city viewsCount likesCount sharesCount createdAt"
+    )
+    .lean();
+
+  res.json(reels);
+};
+
+export const getReelById = async (req, res) => {
+  const { reelId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(reelId)) {
+    return res.status(400).json({ message: "Invalid reelId" });
+  }
+
+  const reel = await Reel.findOne({
+    _id: reelId,
+    isDeleted: false,
+    "moderation.status": "ACTIVE",
+  })
+    .populate("creator", "username profileImage")
+    .lean();
+
+  if (!reel) {
+    return res.status(404).json({ message: "Reel not found" });
+  }
+
+  res.json(reel);
+};
+
+export const incrementReelView = async (req, res) => {
+  const { reelId } = req.params;
+
+  await Reel.findByIdAndUpdate(reelId, {
+    $inc: { viewsCount: 1 },
+  });
+
+  res.json({ success: true });
+};
+
+export const deleteReel = async (req, res) => {
+  const { reelId } = req.params;
+  const userId = req.user.sub;
+
+  const reel = await Reel.findOne({
+    _id: reelId,
+    creator: userId,
+    isDeleted: false,
+  });
+
+  if (!reel) {
+    return res.status(404).json({ message: "Reel not found" });
+  }
+
+  reel.isDeleted = true;
+  await reel.save();
+
+  res.json({ success: true });
+};
+
+export const shadowBanReel = async (reelId, reason) => {
+  await Reel.findByIdAndUpdate(reelId, {
+    "moderation.status": "SHADOW_BANNED",
+    "moderation.reason": reason,
+    "moderation.reviewedAt": new Date(),
+  });
+};
+
+export const getReelComments = async (req, res) => {
+  const { reelId } = req.params;
+  const { cursor, limit = 20 } = req.query;
+
+  const query = {
+    reel: reelId,
+    parentComment: null,
+    isDeleted: false,
+  };
+
+  if (cursor) {
+    query._id = { $lt: cursor };
+  }
+
+  const comments = await Comment.find(query)
+    .sort({ _id: -1 })
+    .limit(Number(limit))
+    .populate("user", "username profileImage")
+    .lean();
+
+  res.json(comments);
+};
+
+
+
 
 
 

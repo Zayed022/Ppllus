@@ -63,5 +63,8 @@ app.use("/api/v1/comment",commentRoute);
 import notificationRoute from './routes/notification.routes.js'
 app.use("/api/v1/notification",notificationRoute);
 
+import messageRoute from './routes/message.routes.js'
+app.use("/api/v1/message",messageRoute);
+
 
 export {app}

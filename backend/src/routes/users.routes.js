@@ -42,7 +42,8 @@ router.route("/profile/image").patch(
       }
   ]),
   authenticate, updateProfileImage
-)  // done
+)
+  // done
 
 router.get(
   "/me/profile-image",

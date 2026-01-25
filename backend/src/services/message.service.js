@@ -10,6 +10,7 @@ import {
   } from "../repositories/message.repository.js";
   import Conversation from "../models/conversation.models.js";
   import Message from "../models/message.models.js"
+import mongoose from "mongoose";
   
   /**
    * Get inbox (chat list)
@@ -37,30 +38,45 @@ import {
    * Send message (atomic, scalable)
    */
   export const sendMessageService = async ({ from, to, body }) => {
-    const conversation = await findOrCreateConversation(from, to);
+    const session = await mongoose.startSession();
+    session.startTransaction();
   
-    const message = await createMessage({
-      conversationId: conversation._id,
-      senderId: from,
-      body,
-      status: "SENT",
-    });
+    try {
+      const conversation = await findOrCreateConversation(from, to, session);
   
-    await Conversation.updateOne(
-      { _id: conversation._id },
-      {
-        $set: {
-          lastMessage: {
-            text: body,
-            sender: from,
-            createdAt: message.createdAt,
-          },
+      const message = await createMessage(
+        {
+          conversationId: conversation._id,
+          senderId: from,
+          body,
+          status: "SENT",
         },
-        $inc: { [`unreadCounts.${to}`]: 1 },
-      }
-    );
+        session
+      );
   
-    return { conversationId: conversation._id, message };
+      await Conversation.updateOne(
+        { _id: conversation._id },
+        {
+          $set: {
+            lastMessage: {
+              text: body,
+              sender: from,
+              createdAt: message.createdAt,
+            },
+          },
+          $inc: { [`unreadCounts.${to}`]: 1 },
+        },
+        { session }
+      );
+  
+      await session.commitTransaction();
+      return { conversationId: conversation._id, message };
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
   };
   
   /**
@@ -70,21 +86,22 @@ import {
     conversationId,
     userId
   ) => {
-    // Mark messages as SEEN
-    await Message.updateMany(
-      {
-        conversationId,
-        senderId: { $ne: userId },
-        status: { $ne: "SEEN" },
-      },
-      { $set: { status: "SEEN" } }
-    );
-  
-    // Reset unread count
-    await Conversation.updateOne(
-      { _id: conversationId },
-      { $set: { [`unreadCounts.${userId}`]: 0 } }
-    );
+    await Promise.all([
+      Message.updateMany(
+        {
+          conversationId,
+          senderId: { $ne: userId },
+          status: { $ne: "SEEN" },
+        },
+        { $set: { status: "SEEN" } }
+      ),
+      Conversation.updateOne(
+        { _id: conversationId },
+        { $set: { [`unreadCounts.${userId}`]: 0 } }
+      ),
+    ]);
   };
+  
+  
   
 

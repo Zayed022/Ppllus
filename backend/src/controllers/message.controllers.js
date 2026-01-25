@@ -2,6 +2,7 @@ import {
     getInboxService,
     getMessagesService,
     markConversationSeenService,
+    sendMessageService,
   } from "../services/message.service.js";
   import Conversation from "../models/conversation.models.js";
   
@@ -82,3 +83,27 @@ import {
     }
   };
   
+
+  export const sendMessage = async (req, res) => {
+    try {
+      const from = req.user.sub;
+      const { to, body } = req.body;
+  
+      if (!to || !body?.trim()) {
+        return res.status(400).json({
+          message: "Recipient and message body are required",
+        });
+      }
+  
+      const result = await sendMessageService({
+        from,
+        to,
+        body,
+      });
+  
+      res.status(201).json(result);
+    } catch (err) {
+      console.error("Send message error:", err);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  };

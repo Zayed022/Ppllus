@@ -4,6 +4,7 @@ import {
   getInbox,
   getMessages,
   markConversationSeen,
+  sendMessage,
 } from "../controllers/message.controllers.js";
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.get("/:conversationId", authenticate, getMessages);
  * Mark conversation as seen
  */
 router.post("/:conversationId/seen", authenticate, markConversationSeen);
+router.post("/send", authenticate, sendMessage);
 
 export default router;
