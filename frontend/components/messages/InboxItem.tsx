@@ -5,63 +5,57 @@ import { useAuth } from "@/hooks/useAuth";
 export default function InboxItem({ conversation }: any) {
   const router = useRouter();
   const { user } = useAuth();
+  
 
-  // ⛔ If auth not ready yet
-  if (!user || !conversation?.participants?.length) {
-    return null;
-  }
+  if (!user) return null;
 
-  // ✅ Safely resolve the other user
-  const other = conversation.participants.find(
-    (p: any) =>
-      p &&
-      typeof p === "object" &&
-      p._id &&
-      p._id.toString() !== user._id.toString()
+  const otherUserId = conversation.participants.find(
+    (id: string) => id !== user._id
   );
 
-  // ⛔ Still unresolved → backend issue, don't crash UI
-  if (!other) {
-    return null;
-  }
+  if (!otherUserId) return null;
+
+  const lastMessageText =
+    conversation?.lastMessage?.text || "Say hi 👋";
+
+  const unreadCount =
+    conversation?.unreadCounts?.[user._id] || 0;
 
   return (
     <Pressable
-      style={styles.container}
-      onPress={() =>
-        router.push({
-          pathname: "/messages/[conversationId]",
-          params: { conversationId: conversation._id },
-        })
-      }
-    >
+  style={styles.container}
+  onPress={() =>
+    router.push(
+      `/message/${conversation._id}?otherUserId=${otherUserId}`
+    )
+  }
+  
+>
+
       <Image
         source={{
-          uri:
-            other.profileImage ||
-            `https://ui-avatars.com/api/?name=${other.username || "User"}`,
+          uri: `https://ui-avatars.com/api/?name=User`,
         }}
         style={styles.avatar}
       />
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.username}>
-          {other.username || "User"}
-        </Text>
+        <Text style={styles.username}>User</Text>
 
         <Text
           numberOfLines={1}
           style={[
             styles.preview,
-            !conversation.lastMessageSeen && styles.unseen,
+            unreadCount > 0 && styles.unseen,
           ]}
         >
-          {conversation.lastMessage || "Say hi 👋"}
+          {lastMessageText}
         </Text>
       </View>
     </Pressable>
   );
 }
+
 
 
 

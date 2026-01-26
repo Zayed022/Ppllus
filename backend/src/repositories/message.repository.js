@@ -3,9 +3,10 @@ import Message from "../models/message.models.js";
 /**
  * Create message
  */
-export const createMessage = async (payload) => {
-  return Message.create(payload);
+export const createMessage = async (payload, session) => {
+  return Message.create([payload], { session }).then(res => res[0]);
 };
+
 
 /**
  * Cursor-based pagination

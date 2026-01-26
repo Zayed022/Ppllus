@@ -1,7 +1,9 @@
+import { useRouter } from "expo-router";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import Feather from "react-native-vector-icons/Feather";
 
 export default function HomeHeader() {
+  const router = useRouter();
   return (
     <View style={styles.container}>
       {/* Left: Create */}
@@ -13,9 +15,12 @@ export default function HomeHeader() {
       <Text style={styles.logo}>Ppllus</Text>
 
       {/* Right: Activity */}
-      <Pressable style={styles.iconButton}>
-        <Feather name="heart" size={22} color="#000" />
-      </Pressable>
+      <Pressable
+      style={styles.iconButton}
+      onPress={() => router.push("/message/inbox")}
+    >
+      <Feather name="heart" size={22} color="#000" />
+    </Pressable>
     </View>
   );
 }

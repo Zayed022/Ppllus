@@ -18,7 +18,7 @@ import {
   
       res.status(200).json(inbox);
     } catch (err) {
-      console.error("Inbox error:", err);
+      console.log("Inbox error:", err);
       res.status(500).json({ message: "Failed to load inbox" });
     }
   };
