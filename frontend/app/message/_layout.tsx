@@ -1,10 +1,11 @@
-import { Slot } from "expo-router";
-import { View } from "react-native";
+import { Stack } from "expo-router";
 
 export default function MessageLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      <Slot />
-    </View>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    />
   );
 }

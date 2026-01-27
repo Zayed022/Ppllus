@@ -39,7 +39,7 @@ export default function ChatScreen() {
     const mapped = data
       .map((msg: any) => ({
         ...msg,
-        fromMe: msg.senderId === user._id,
+        fromMe: msg.senderId === user.id,
       }))
       .reverse();
 

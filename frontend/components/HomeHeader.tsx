@@ -7,9 +7,13 @@ export default function HomeHeader() {
   return (
     <View style={styles.container}>
       {/* Left: Create */}
-      <Pressable style={styles.iconButton}>
-        <Feather name="plus" size={24} color="#000" />
-      </Pressable>
+      <Pressable
+  style={styles.iconButton}
+  onPress={() => router.push("/modal/create")}
+>
+  <Feather name="plus" size={24} color="#000" />
+</Pressable>
+
 
       {/* Center: Brand */}
       <Text style={styles.logo}>Ppllus</Text>

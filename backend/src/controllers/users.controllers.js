@@ -212,17 +212,69 @@ export const completeOnboarding = async (req, res) => {
 };
 
 export const searchUsers = async (req, res) => {
-    const q = req.query.q?.trim();
-    if (!q || q.length < 2) return res.json([]);
-  
-    const users = await User.find({
-      username: new RegExp(`^${q}`, "i"),
-      status: "ACTIVE",
+  const q = req.query.q?.trim().toLowerCase();
+  const userId = req.user.sub;
+
+  if (!q || q.length < 2) {
+    return res.json([]);
+  }
+
+  const cacheKey = `search:users:${q}`;
+
+  // 1️⃣ Redis cache
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return res.json(JSON.parse(cached));
+  }
+
+  // 2️⃣ Prefix search (index-backed)
+  const users = await User.find({
+    usernameLower: {
+      $gte: q,
+      $lt: q + "\uffff",
+    },
+    status: "ACTIVE",
+  })
+    .select("_id username profileImage lastLoginAt")
+    .limit(30)
+    .lean();
+
+  // 3️⃣ Mutual followers ranking (Instagram secret sauce)
+  const following = await Follow.find({
+    follower: userId,
+    status: "ACTIVE",
+  }).select("following");
+
+  const followingSet = new Set(
+    following.map((f) => f.following.toString())
+  );
+
+  // 4️⃣ Rank results
+  const ranked = users
+    .map((u) => {
+      let score = 0;
+
+      if (u.usernameLower === q) score += 100;          // exact
+      else if (u.usernameLower.startsWith(q)) score += 50;
+
+      if (followingSet.has(u._id.toString())) score += 30;
+
+      if (u.lastLoginAt) {
+        const hoursAgo =
+          (Date.now() - new Date(u.lastLoginAt)) / 36e5;
+        score += Math.max(0, 10 - hoursAgo);
+      }
+
+      return { ...u, score };
     })
-      .limit(20)
-      .select("username profileImage");
-  
-    res.json(users);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20)
+    .map(({ score, ...u }) => u);
+
+  // 5️⃣ Cache
+  await redis.set(cacheKey, JSON.stringify(ranked), "EX", 60);
+
+  res.json(ranked);
 };
 
 export const updatePrivacy = async (req, res) => {

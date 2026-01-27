@@ -54,4 +54,11 @@ export const getReelById = async (reelId: string) => {
     return res.data;
   };
 
+  export const createReel = async (formData: FormData) => {
+    const res = await api.post("/reel/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  };
+
   

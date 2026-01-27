@@ -3,28 +3,45 @@ import StoriesRow from "@/components/StoriesRow";
 
 import ReelInline from "@/components/ReelInline";
 import { getHomeFeed } from "@/services/feed.api";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PostCard from "./feed/PostCard";
+import { useFocusEffect } from "expo-router";
 
 export default function HomeFeed() {
   const [items, setItems] = useState<any[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadFeed();
-  }, []);
-
   const loadFeed = async () => {
     const data = await getHomeFeed(cursor);
-    setItems(prev => [...prev, ...data.items]);
+
+    const normalized = data.items.map((item: any) => {
+      if (item.videoUrl) {
+        return { type: "REEL", reel: item };
+      }
+      return { type: "POST", post: item };
+    });
+
+    setItems((prev) => [...prev, ...normalized]);
     setCursor(data.nextCursor);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      setItems([]);
+      setCursor(null);
+      loadFeed();
+    }, [])
+  );
 
   return (
     <FlatList
       ListHeaderComponent={<StoriesRow />}
       data={items}
-      keyExtractor={(_, i) => i.toString()}
+      keyExtractor={(item) =>
+        item.type === "REEL"
+          ? `reel-${item.reel._id}`
+          : `post-${item.post._id}`
+      }
       renderItem={({ item }) => {
         if (item.type === "POST") {
           return <PostCard post={item.post} />;
@@ -39,3 +56,4 @@ export default function HomeFeed() {
     />
   );
 }
+

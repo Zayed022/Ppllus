@@ -1,4 +1,4 @@
-import { FlatList, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
 import { useEffect, useState } from "react";
 import { getInbox } from "@/services/message.api";
 import InboxItem from "@/components/messages/InboxItem";
@@ -17,12 +17,20 @@ export default function InboxScreen() {
 
   const loadInbox = async () => {
     const data = await getInbox();
-    setConversations(Array.isArray(data) ? data : []);
+    console.log("INBOX DATA:", data);
+  
+    // ✅ normalize response
+    setConversations(Array.isArray(data) ? data : [data]);
   };
+  
+  
 
   return (
    
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      <Text>INBOX SCREEN LOADED</Text>
+
+      
       <FlatList
         data={conversations}
         keyExtractor={(item) => item._id}

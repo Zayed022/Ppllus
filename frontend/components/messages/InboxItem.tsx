@@ -5,42 +5,44 @@ import { useAuth } from "@/hooks/useAuth";
 export default function InboxItem({ conversation }: any) {
   const router = useRouter();
   const { user } = useAuth();
-  
 
   if (!user) return null;
 
-  const otherUserId = conversation.participants.find(
-    (id: string) => id !== user._id
+  // ✅ FIX: participants are OBJECTS, not IDs
+  const otherUser = conversation.participants.find(
+    (p: any) => p._id !== user.id
   );
 
-  if (!otherUserId) return null;
+  if (!otherUser) return null;
 
   const lastMessageText =
     conversation?.lastMessage?.text || "Say hi 👋";
 
-  const unreadCount =
-    conversation?.unreadCounts?.[user._id] || 0;
+    const unreadCount =
+    conversation?.unreadCounts?.[user.id] || 0;
 
   return (
     <Pressable
-  style={styles.container}
-  onPress={() =>
-    router.push(
-      `/message/${conversation._id}?otherUserId=${otherUserId}`
-    )
-  }
-  
->
-
+      style={styles.container}
+      onPress={() =>
+        router.push(
+          `/message/${conversation._id}?otherUserId=${otherUser._id}`
+        )
+      }
+    >
       <Image
         source={{
-          uri: `https://ui-avatars.com/api/?name=User`,
+          uri:
+            otherUser.profileImage ||
+            `https://ui-avatars.com/api/?name=${otherUser.username}`,
         }}
         style={styles.avatar}
       />
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.username}>User</Text>
+        <Text style={styles.username}>
+          {otherUser.username}
+        </Text>
 
         <Text
           numberOfLines={1}
@@ -55,6 +57,7 @@ export default function InboxItem({ conversation }: any) {
     </Pressable>
   );
 }
+
 
 
 

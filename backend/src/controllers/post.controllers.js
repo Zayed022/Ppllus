@@ -18,6 +18,11 @@ export const createPost = async (req, res) => {
 
     for (const file of req.files.media) {
       const uploaded = await uploadOnCloudinary(file.path);
+      if (!uploaded?.url) {
+        return res.status(500).json({
+          message: "Media upload failed",
+        });
+      }
 
       uploadedMedia.push({
         url: uploaded.url,
