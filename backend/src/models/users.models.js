@@ -71,16 +71,20 @@ const userSchema = new Schema(
       },
       
 
-    username: {
-      type: String,
-      unique: true,
-      sparse: true,
-      lowercase: true,
-      trim: true,
-      minlength: 3,
-      maxlength: 30,
-      index: true,
-    },
+      username: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        minlength: 3,
+        maxlength: 30,
+      },
+      
+      usernameLower: {
+        type: String,
+        index: true,
+      },
+      
 
     firstName: {
       type: String,
@@ -176,6 +180,14 @@ userSchema.index({ email: 1 });
 userSchema.virtual("name").get(function () {
   return [this.firstName, this.surname].filter(Boolean).join(" ");
 });
+
+userSchema.pre("save", function (next) {
+  if (this.isModified("username") && this.username) {
+    this.usernameLower = this.username.toLowerCase();
+  }
+  
+});
+
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password") || !this.password) return;

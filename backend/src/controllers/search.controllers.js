@@ -1,6 +1,6 @@
 import User from "../models/users.models.js";
 
-export const searchUsers = async (req, res) => {
+export const searchUsers2 = async (req, res) => {
   const q = req.query.q?.trim();
   if (!q || q.length < 2) return res.json([]);
 

@@ -1,8 +1,10 @@
 import User from "../models/users.models.js";
 import bcrypt from "bcryptjs";
+import Follow from "../models/follow.models.js"
 import { hashToken } from "../utils/token.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-
+import { getRedis } from "../db/redis.js";
+const redis = getRedis();
 
 const generateAccessAndRefreshTokens = async (user) => {
     const accessToken = user.generateAccessToken();
@@ -114,6 +116,7 @@ export const getMe = async (req, res) => {
     );
     res.json(user);
 };  
+
 
 export const updateBasicProfile = async (req, res) => {
     const { username } = req.body;
@@ -254,8 +257,8 @@ export const searchUsers = async (req, res) => {
     .map((u) => {
       let score = 0;
 
-      if (u.usernameLower === q) score += 100;          // exact
-      else if (u.usernameLower.startsWith(q)) score += 50;
+      if (u.username === q) score += 100;          // exact
+      else if (u.username.startsWith(q)) score += 50;
 
       if (followingSet.has(u._id.toString())) score += 30;
 
@@ -307,4 +310,18 @@ export const getSuggestedUsers = async (req, res) => {
     .select("username profileImage");
 
   res.json(suggestions);
+};
+
+export const getUserProfile = async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId)
+    .select(" _id username bio profileImage followers following postsCount")
+    .lean();
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(user);
 };
