@@ -1,85 +1,70 @@
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 
-const resolveProfileImage = (profile: any) => {
-    const uri = profile?.profileImage;
-  
-    if (typeof uri === "string" && uri.startsWith("http")) {
-      return uri.replace(/^http:\/\//, "https://");
-    }
-  
-    if (profile?.username) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        profile.username
-      )}`;
-    }
-  
-    // absolute fallback
-    return "https://ui-avatars.com/api/?name=User";
-  };
-  
-  
+const resolveProfileImage = (user: any) => {
+  const uri = user?.profileImage;
+  if (typeof uri === "string" && uri.startsWith("http")) {
+    return uri.replace(/^http:\/\//, "https://");
+  }
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    user?.username || "User"
+  )}`;
+};
 
 export default function ProfileHeader({
-  profile,
-  followersCount,
-  followingCount,
+  user,
+  counts,
   isOwnProfile,
   isFollowing,
+  isRequested,
   onFollow,
 }: {
-  profile: any;
-  followersCount: number;
-  followingCount: number;
+  user: any;
+  counts: { posts: number; followers: number; following: number };
   isOwnProfile: boolean;
   isFollowing: boolean;
+  isRequested: boolean;
   onFollow: () => void;
 }) {
+  const getButtonLabel = () => {
+    if (isFollowing) return "Following";
+    if (isRequested) return "Requested";
+    return "Follow";
+  };
+
   return (
     <View style={styles.container}>
-      {/* Avatar + Stats */}
       <View style={styles.topRow}>
-      <Image
-  source={{ uri: resolveProfileImage(profile) }}
-  style={styles.avatar}
-  resizeMode="cover"
-  onLoad={() => {}}
-/>
-
+        <Image
+          source={{ uri: resolveProfileImage(user) }}
+          style={styles.avatar}
+        />
 
         <View style={styles.stats}>
-          <Stat label="Posts" value={profile.postsCount ?? 0} />
-          <Stat label="Followers" value={followersCount} />
-          <Stat label="Following" value={followingCount} />
+          <Stat label="Posts" value={counts.posts} />
+          <Stat label="Followers" value={counts.followers} />
+          <Stat label="Following" value={counts.following} />
         </View>
       </View>
 
-      {/* Username & Bio */}
-      <Text style={styles.username}>
-  {profile?.username || ""}
-</Text>
+      <Text style={styles.username}>{user.username}</Text>
+      {!!user.bio && <Text style={styles.bio}>{user.bio}</Text>}
 
-{!!profile?.bio && (
-  <Text style={styles.bio}>{profile.bio}</Text>
-)}
-
-
-      {/* Actions */}
       {!isOwnProfile && (
         <View style={styles.actions}>
           <Pressable
             style={[
               styles.followBtn,
-              isFollowing && styles.followingBtn,
+              (isFollowing || isRequested) && styles.followingBtn,
             ]}
             onPress={onFollow}
           >
             <Text
               style={[
                 styles.followText,
-                isFollowing && styles.followingText,
+                (isFollowing || isRequested) && styles.followingText,
               ]}
             >
-              {isFollowing ? "Following" : "Follow"}
+              {getButtonLabel()}
             </Text>
           </Pressable>
 
@@ -100,40 +85,23 @@ const Stat = ({ label, value }: { label: string; value: number }) => (
 );
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: "#fff",
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  container: { padding: 16, backgroundColor: "#fff" },
+  topRow: { flexDirection: "row", alignItems: "center" },
   avatar: {
     width: 86,
     height: 86,
     borderRadius: 43,
     backgroundColor: "#eee",
+    overflow: "hidden",
   },
   stats: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-around",
   },
-  username: {
-    fontWeight: "700",
-    marginTop: 12,
-    fontSize: 15,
-  },
-  bio: {
-    marginTop: 4,
-    color: "#333",
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
-  },
+  username: { fontWeight: "700", marginTop: 12, fontSize: 15 },
+  bio: { marginTop: 4, color: "#333" },
+  actions: { flexDirection: "row", gap: 8, marginTop: 14 },
   followBtn: {
     flex: 1,
     backgroundColor: "#0095f6",
@@ -146,13 +114,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  followText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  followingText: {
-    color: "#000",
-  },
+  followText: { color: "#fff", fontWeight: "600" },
+  followingText: { color: "#000" },
   messageBtn: {
     flex: 1,
     borderWidth: 1,
@@ -161,7 +124,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  messageText: {
-    fontWeight: "600",
-  },
+  messageText: { fontWeight: "600" },
 });

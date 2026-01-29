@@ -14,6 +14,7 @@ import {
   refreshAccessToken,
   getMyProfileImage,
   getUserProfile,
+  getUserProfileById,
 } from "../controllers/users.controllers.js";
 import { authenticate } from "../middlewares/auth.middlewares.js";
 import { rateLimiter } from "../middlewares/rateLimiter.js";
@@ -36,14 +37,14 @@ router.post("/refresh", authLimiter, refreshAccessToken);
 router.patch("/profile/basic", authenticate, updateBasicProfile);    // done
 router.patch("/profile/dob-gender", authenticate, updateDobGender); // done
 router.patch("/profile/interests", authenticate, updateInterests);  // done
-router.route("/profile/image").patch(
+router.route("/profile/image").patch(authenticate, 
   upload.fields([
       {
           name:"profileImage",
           maxCount:1
       }
   ]),
-  authenticate, updateProfileImage
+  updateProfileImage
 )
   // done
 
@@ -58,5 +59,10 @@ router.get("/search2", authenticate, searchUsers2);
 router.patch("/privacy", authenticate, updatePrivacy);
 router.delete("/deactivate", authenticate, deactivateAccount);
 router.get("/:userId/profile", authenticate, getUserProfile);
+router.get(
+  "/:userId",
+  authenticate, // viewer may be logged out
+  getUserProfileById
+);
 
 export default router;

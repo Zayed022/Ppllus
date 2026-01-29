@@ -1,11 +1,11 @@
-import { FlatList, View } from "react-native";
+import { FlatList } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { getUserProfile, getUserPosts } from "@/services/profile.api";
-import { getFollowers, getFollowing } from "@/services/follow.api";
+import { followUser, unfollowUser } from "@/services/follow.api";
 
-import ProfileHeader from "@/components/profile/ProfileHeader";
+import ProfileHeader from "@/components/profile/ProfileHeader2";
 import ProfilePostsGrid from "@/components/profile/ProfilePostGrid";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,61 +13,112 @@ export default function UserProfileScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user: me } = useAuth();
 
-  const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [counts, setCounts] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
+  const [loadingFollow, setLoadingFollow] = useState(false);
 
   useEffect(() => {
     if (userId) load();
   }, [userId]);
 
   const load = async () => {
-    const [user, postsRes, followers, following] = await Promise.all([
+    const [profileRes, postsRes] = await Promise.all([
       getUserProfile(userId),
       getUserPosts(userId),
-      getFollowers(userId),
-      getFollowing(userId),
     ]);
 
-    setProfile(user);
+    setUser(profileRes.user);
+    setCounts(profileRes.counts);
+    setIsFollowing(profileRes.isFollowing);
+    setIsRequested(profileRes.isRequested);
     setPosts(postsRes);
-    setFollowersCount(followers.length);
-    setFollowingCount(following.length);
-
-    // Instagram-style follow check
-    setIsFollowing(
-      followers.some((f: any) => f._id === me?._id)
-    );
   };
 
-  if (!profile) return null;
+  const handleFollowToggle = async () => {
+    if (loadingFollow) return;
+    setLoadingFollow(true);
+  
+    try {
+      if (isFollowing || isRequested) {
+        await unfollowUser(user._id);
+  
+        setIsFollowing(false);
+        setIsRequested(false);
+        setCounts((c: any) => ({
+          ...c,
+          followers: Math.max(0, c.followers - 1),
+        }));
+      } else {
+        const res = await followUser(user._id);
+  
+        // ✅ ACTIVE FOLLOW
+        if (res?.follow?.status === "ACTIVE") {
+          setIsFollowing(true);
+          setCounts((c: any) => ({
+            ...c,
+            followers: c.followers + 1,
+          }));
+          return;
+        }
+  
+        // 🔒 PRIVATE ACCOUNT
+        if (res?.follow?.status === "REQUESTED") {
+          setIsRequested(true);
+          return;
+        }
+      }
+    } catch (err: any) {
+      const status = err?.response?.status;
+    
+      // ✅ Already following
+      if (status === 409) {
+        if (err?.response?.data?.status === "ACTIVE") {
+          setIsFollowing(true);
+          setIsRequested(false);
+        } else if (err?.response?.data?.status === "REQUESTED") {
+          setIsRequested(true);
+        }
+        return;
+      }
+    
+      // ❌ Real auth failure
+      if (status === 401) {
+        console.warn("Session expired – login again");
+        return;
+      }
+    
+      console.error("Follow error:", err?.response?.data || err.message);
+    }
+     finally {
+      setLoadingFollow(false);
+    }
+  };
+  
+  
+
+  if (!user || !counts) return null;
 
   return (
     <FlatList
-  data={posts}
-  extraData={profile} // still required
-  keyExtractor={(item) => item._id}
-  numColumns={3}
-  renderItem={({ item }) => <ProfilePostsGrid post={item} />}
-  ListHeaderComponent={() => (
-    <View style={{ backgroundColor: "#fff" }}>
-      <ProfileHeader
-        profile={profile}
-        followersCount={followersCount}
-        followingCount={followingCount}
-        isOwnProfile={me?._id === profile._id}
-        isFollowing={isFollowing}
-        onFollow={() => {}}
-      />
-    </View>
-  )}
-  
-  contentContainerStyle={{ paddingBottom: 40 }}
-  showsVerticalScrollIndicator={false}
-/>
-
-
+      data={posts}
+      keyExtractor={(item) => item._id}
+      numColumns={3}
+      renderItem={({ item }) => <ProfilePostsGrid post={item} />}
+      ListHeaderComponent={() => (
+        <ProfileHeader
+          user={user}
+          counts={counts}
+          isOwnProfile={me?._id === user._id}
+          isFollowing={isFollowing}
+          isRequested={isRequested}
+          onFollow={handleFollowToggle}
+        />
+      )}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
+    />
   );
 }

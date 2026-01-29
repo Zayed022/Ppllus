@@ -11,3 +11,14 @@ export const getFollowing = async (userId: string) => {
   const res = await api.get(`/follow/following/${userId}`);
   return res.data;
 };
+
+
+export const followUser = async (userId: string) => {
+  const res = await api.post(`/follow/${userId}`);
+  return res.data;
+};
+
+export const unfollowUser = async (userId: string) => {
+  const res = await api.delete(`/follow/${userId}`);
+  return res.data;
+};

@@ -1,4 +1,5 @@
 import api from "./api";
+import * as SecureStore from "expo-secure-store";
 
 /** Get full logged-in user */
 export const getMe = async () => {

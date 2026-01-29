@@ -36,8 +36,11 @@ export default function ProfileScreen() {
     profileImage={profileImage}
   />
   <ProfileBio user={user} />
-  <ProfileActions isOwnProfile />
-  
+  <ProfileActions
+  userId={user._id}
+  isOwnProfile={true}
+/>
+
   <ProfileTabs userId={user._id} />
 </ScrollView>
 

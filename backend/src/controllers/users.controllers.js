@@ -1,9 +1,12 @@
 import User from "../models/users.models.js";
 import bcrypt from "bcryptjs";
 import Follow from "../models/follow.models.js"
+import Post from "../models/post.models.js"
+import Reel from "../models/reel.models.js"
 import { hashToken } from "../utils/token.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { getRedis } from "../db/redis.js";
+import mongoose from "mongoose";
 const redis = getRedis();
 
 const generateAccessAndRefreshTokens = async (user) => {
@@ -119,23 +122,24 @@ export const getMe = async (req, res) => {
 
 
 export const updateBasicProfile = async (req, res) => {
-    const { username } = req.body;
-  
-    if (username) {
-      const exists = await User.findOne({ username });
-      if (exists && exists._id.toString() !== req.user.sub) {
-        return res.status(409).json({ message: "Username already taken" });
-      }
+  const { username, firstName, surname, bio, website } = req.body;
+
+  if (username) {
+    const exists = await User.findOne({ username });
+    if (exists && exists._id.toString() !== req.user.sub) {
+      return res.status(409).json({ message: "Username already taken" });
     }
-  
-    const user = await User.findByIdAndUpdate(
-      req.user.sub,
-      req.body,
-      { new: true }
-    );
-  
-    res.json(user);
-};  
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user.sub,
+    { username, firstName, surname, bio, website },
+    { new: true }
+  ).select("username firstName surname bio website profileImage");
+
+  res.json(user);
+};
+ 
 
 export const updateDobGender = async (req, res) => {
     const { dob, gender } = req.body;
@@ -312,11 +316,12 @@ export const getSuggestedUsers = async (req, res) => {
   res.json(suggestions);
 };
 
+// controllers/user.controller.ts
 export const getUserProfile = async (req, res) => {
   const { userId } = req.params;
 
   const user = await User.findById(userId)
-    .select(" _id username bio profileImage followers following postsCount")
+    .select("_id username profileImage bio")
     .lean();
 
   if (!user) {
@@ -325,3 +330,119 @@ export const getUserProfile = async (req, res) => {
 
   res.json(user);
 };
+
+export const getUserProfileById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const viewerId = req.user?.sub;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid userId" });
+    }
+
+    // 1️⃣ Fetch user
+    const user = await User.findOne({
+      _id: userId,
+      status: "ACTIVE",
+    })
+      .select(
+        "_id username firstName surname bio profileImage city visibility lastLoginAt"
+      )
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isSelf =
+      viewerId && viewerId.toString() === user._id.toString();
+
+    // 2️⃣ Parallel counts + follow state (FAST)
+    const [
+      postsCount,
+      reelsCount,
+      followersCount,
+      followingCount,
+      followRelation,
+    ] = await Promise.all([
+      Post.countDocuments({
+        author: user._id,
+        isDeleted: false,
+      }),
+      Reel.countDocuments({
+        creator: user._id,
+        isDeleted: false,
+        "moderation.status": "ACTIVE",
+      }),
+      Follow.countDocuments({
+        following: user._id,
+        status: "ACTIVE",
+      }),
+      Follow.countDocuments({
+        follower: user._id,
+        status: "ACTIVE",
+      }),
+      viewerId
+        ? Follow.findOne({
+            follower: viewerId,
+            following: user._id,
+          }).select("status")
+        : null,
+    ]);
+
+    const isFollowing = followRelation?.status === "ACTIVE";
+    const isRequested = followRelation?.status === "PENDING";
+
+    // 3️⃣ PRIVATE profile gate (Instagram-style)
+    if (
+      user.visibility === "PRIVATE" &&
+      !isSelf &&
+      !isFollowing
+    ) {
+      return res.json({
+        user: {
+          _id: user._id,
+          username: user.username,
+          profileImage: user.profileImage || null,
+          isPrivate: true,
+        },
+        counts: {
+          followers: followersCount,
+          following: followingCount,
+        },
+        isFollowing: false,
+        isRequested,
+        isSelf,
+      });
+    }
+
+    // 4️⃣ Full profile response
+    res.json({
+      user: {
+        _id: user._id,
+        username: user.username,
+        name: [user.firstName, user.surname]
+          .filter(Boolean)
+          .join(" "),
+        bio: user.bio || "",
+        profileImage: user.profileImage || null,
+        city: user.city || null,
+        visibility: user.visibility,
+        lastLoginAt: user.lastLoginAt,
+      },
+      counts: {
+        posts: postsCount,
+        reels: reelsCount,
+        followers: followersCount,
+        following: followingCount,
+      },
+      isFollowing,
+      isRequested,
+      isSelf,
+    });
+  } catch (err) {
+    console.error("Get user profile by ID error:", err);
+    res.status(500).json({ message: "Failed to load profile" });
+  }
+};
+

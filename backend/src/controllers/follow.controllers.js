@@ -15,40 +15,48 @@ export const followUser = async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
+  const existing = await Follow.findOne({
+    follower: followerId,
+    following: followingId,
+  });
+
+  if (existing) {
+    return res.status(409).json({
+      message:
+        existing.status === "REQUESTED"
+          ? "Follow request already sent"
+          : "Already following",
+      status: existing.status,
+    });
+  }
+
   const status =
     targetUser.visibility === "PRIVATE" ? "REQUESTED" : "ACTIVE";
 
-  try {
-    const follow = await Follow.create({
-      follower: followerId,
-      following: followingId,
-      status,
-    });
+  const follow = await Follow.create({
+    follower: followerId,
+    following: followingId,
+    status,
+  });
 
-    // 🔔 EMIT EVENT (ONLY IF ACTIVE)
-    if (status === "ACTIVE") {
-      emitEvent({
-        type: "FOLLOW",
-        actorId: followerId,
-        targetUserId: followingId,
-        entityId: followerId,
-      });
-    }
-
-    res.json({
-      message:
-        status === "ACTIVE"
-          ? "Followed successfully"
-          : "Follow request sent",
-      follow,
+  if (status === "ACTIVE") {
+    emitEvent({
+      type: "FOLLOW",
+      actorId: followerId,
+      targetUserId: followingId,
+      entityId: followerId,
     });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({ message: "Already following" });
-    }
-    throw err;
   }
+
+  res.json({
+    message:
+      status === "ACTIVE"
+        ? "Followed successfully"
+        : "Follow request sent",
+    follow,
+  });
 };
+
 
 
 export const unfollowUser = async (req, res) => {
