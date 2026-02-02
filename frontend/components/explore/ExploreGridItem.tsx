@@ -7,14 +7,23 @@ const SIZE = width / 3;
 export default function ExploreGridItem({ item }: any) {
   const router = useRouter();
 
+  const uri =
+    item.type === "POST"
+      ? item.data.media[0]?.url
+      : item.data.thumbnailUrl;
+
+  const onPress = () => {
+    if (item.type === "POST") {
+      router.push(`/post/${item.data._id}`);
+    } else {
+      router.push(`/reels/${item.data._id}`);
+    }
+  };
+
   return (
-    <Pressable
-      onPress={() =>
-        router.push(`/reels/${item._id}`)
-      }
-    >
+    <Pressable onPress={onPress}>
       <Image
-        source={{ uri: item.thumbnail }}
+        source={{ uri }}
         style={{
           width: SIZE,
           height: SIZE,

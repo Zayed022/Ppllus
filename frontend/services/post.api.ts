@@ -36,3 +36,14 @@ export const createPost = async (formData: FormData) => {
   });
   return res.data;
 };
+
+export const getPostById = async (postId: string) => {
+  if (!postId) {
+    throw new Error("postId is required");
+  }
+
+  const res = await api.get(`/post/${postId}`);
+
+  // Backend returns the post object directly
+  return res.data;
+};

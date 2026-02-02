@@ -2,6 +2,8 @@ import express from "express"
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import { rateLimiter } from "./middlewares/rateLimiter.js"
+import { buildExploreFeed } from "./workers/exploreFeed.worker.js"
+
 const app = express()
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
@@ -9,20 +11,22 @@ app.use(cors({
 }))
 app.use(express.json({limit: "16kb"}))
 app.use(cookieParser())
-app.use(
-    rateLimiter({
-      keyPrefix: "global",
-      limit: 300,
-      windowSec: 60,
-    })
-  );
+
+
 // app.js
-app.use(rateLimiter({ keyPrefix: "global", limit: 300, windowSec: 60 }));
-app.use("/auth", rateLimiter({ keyPrefix: "auth", limit: 10, windowSec: 60 }));
+
+app.use(rateLimiter({
+  keyPrefix: "global",
+  limit: 1000,
+  windowSec: 60,
+}));
+
+
+
 app.use("/wallet", rateLimiter({ keyPrefix: "wallet", limit: 5, windowSec: 60 }));
 app.use("/engagement", rateLimiter({ keyPrefix: "engagement", limit: 100, windowSec: 60 }));
 
-  
+
 
 import userRoute from './routes/users.routes.js'
 app.use("/api/v1/users",userRoute);

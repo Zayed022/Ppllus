@@ -35,6 +35,21 @@ export const createReel = async (req, res) => {
     city,
   });
 
+  // 🔥 FRESH feed (recency)
+await redis.zadd(
+  "feed:explore:fresh",
+  Date.now(), // higher = newer
+  reel._id.toString()
+);
+
+// 🔥 HOT feed (engagement score starts at 0)
+await redis.zadd(
+  "feed:explore:hot",
+  0,
+  reel._id.toString()
+);
+
+
   res.status(201).json(reel);
 };
 

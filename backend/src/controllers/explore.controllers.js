@@ -1,34 +1,139 @@
 import Reel from "../models/reel.models.js";
+import Post from "../models/post.models.js"
 import { getRedis } from "../db/redis.js";
 const redis = getRedis();
 
 export const getExploreReels = async (req, res) => {
-  const cached = await redis.get("explore:reels");
+  const cursor = Number(req.query.cursor || 0);
+  const limit = Number(req.query.limit || 20);
 
-  if (cached) {
-    return res.json(JSON.parse(cached));
+  const FETCH_MULTIPLIER = 3;
+  const fetchCount = limit * FETCH_MULTIPLIER;
+
+  const hotCount = Math.floor(fetchCount * 0.7);
+  const freshCount = fetchCount - hotCount;
+
+  const [hotIds, freshIds] = await Promise.all([
+    redis.zrevrange(
+      "feed:explore:hot",
+      cursor,
+      cursor + hotCount - 1
+    ),
+    redis.zrevrange(
+      "feed:explore:fresh",
+      cursor,
+      cursor + freshCount - 1
+    ),
+  ]);
+
+  const reelIds = [...new Set([...hotIds, ...freshIds])];
+
+  if (!reelIds.length) {
+    return res.json({ data: [], nextCursor: cursor });
   }
 
-  // 🔥 FALLBACK TO DB
   const reels = await Reel.find({
+    _id: { $in: reelIds },
     isDeleted: false,
     "moderation.status": "ACTIVE",
   })
-    .sort({ createdAt: -1 })
-    .limit(60)
-    .select("thumbnail video creator")
+    .populate("creator", "username profileImage")
     .lean();
 
-  // 🔥 CACHE IT
-  await redis.set(
-    "explore:reels",
-    JSON.stringify(reels),
-    "EX",
-    60 * 10 // 10 minutes
+  const reelMap = new Map(
+    reels.map(r => [r._id.toString(), r])
   );
 
-  res.json(reels);
+  const ordered = reelIds
+    .map(id => reelMap.get(id))
+    .filter(Boolean);
+
+  // 🧠 Instagram-style diversity
+  const seenCreators = new Set();
+  const seenCategories = new Set();
+  const finalFeed = [];
+
+  for (const reel of ordered) {
+    if (finalFeed.length >= limit) break;
+
+    const creatorId = reel.creator?._id?.toString();
+    const category = reel.categories?.[0];
+
+    if (creatorId && seenCreators.has(creatorId)) continue;
+
+    if (category && seenCategories.has(category)) {
+      if (Math.random() < 0.7) continue;
+    }
+
+    finalFeed.push(reel);
+
+    if (creatorId) seenCreators.add(creatorId);
+    if (category) seenCategories.add(category);
+  }
+
+  res.json({
+    data: finalFeed,
+    nextCursor: cursor + limit,
+  });
 };
+
+export const getExplorePosts = async (req, res) => {
+  const cursor = Number(req.query.cursor || 0);
+  const limit = Number(req.query.limit || 21); // 3 columns
+
+  const fetchCount = limit * 3;
+
+  const [hotIds, freshIds] = await Promise.all([
+    redis.zrevrange(
+      "feed:explore:posts:hot",
+      cursor,
+      cursor + Math.floor(fetchCount * 0.7)
+    ),
+    redis.zrevrange(
+      "feed:explore:posts:fresh",
+      cursor,
+      cursor + Math.floor(fetchCount * 0.3)
+    ),
+  ]);
+
+  const postIds = [...new Set([...hotIds, ...freshIds])];
+
+  const posts = await Post.find({
+    _id: { $in: postIds },
+    isDeleted: false,
+    visibility: "PUBLIC",
+  })
+    .populate("author", "username profileImage")
+    .lean();
+
+  const postMap = new Map(
+    posts.map(p => [p._id.toString(), p])
+  );
+
+  const ordered = postIds
+    .map(id => postMap.get(id))
+    .filter(Boolean);
+
+  // 🎯 Diversity
+  const seenAuthors = new Set();
+  const final = [];
+
+  for (const post of ordered) {
+    if (final.length >= limit) break;
+
+    const authorId = post.author?._id?.toString();
+    if (authorId && seenAuthors.has(authorId)) continue;
+
+    final.push(post);
+    if (authorId) seenAuthors.add(authorId);
+  }
+
+  res.json({
+    data: final,
+    nextCursor: cursor + limit,
+  });
+};
+
 
 export const getReelsByCategory = async (req, res) => {
   const { category } = req.params;
@@ -61,6 +166,41 @@ export const getReelsByCity = async (req, res) => {
 
   res.json(reels);
 };
+
+export const getReelFeed = async (req, res) => {
+  const userId = req.user.sub;
+  const { cursor, limit = 10 } = req.query;
+
+  const key = `feed:reel:${userId}`;
+
+  // 1️⃣ Get ranked reel IDs
+  const reelIds = await redis.zrevrange(
+    key,
+    cursor ? Number(cursor) : 0,
+    (cursor ? Number(cursor) : 0) + limit - 1
+  );
+
+  if (!reelIds.length) return res.json([]);
+
+  // 2️⃣ Fetch reels
+  const reels = await Reel.find({
+    _id: { $in: reelIds },
+    isDeleted: false,
+    "moderation.status": "ACTIVE",
+  })
+    .populate("creator", "username profileImage")
+    .lean();
+
+  // 3️⃣ Preserve order
+  const reelMap = new Map(reels.map(r => [r._id.toString(), r]));
+  const ordered = reelIds.map(id => reelMap.get(id)).filter(Boolean);
+
+  res.json({
+    data: ordered,
+    nextCursor: (cursor ? Number(cursor) : 0) + limit,
+  });
+};
+
 
 
 
