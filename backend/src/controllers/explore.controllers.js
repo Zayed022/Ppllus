@@ -168,21 +168,22 @@ export const getReelsByCity = async (req, res) => {
 };
 
 export const getReelFeed = async (req, res) => {
-  const userId = req.user.sub;
-  const { cursor, limit = 10 } = req.query;
+  const cursor = Number(req.query.cursor || 0);
+  const limit = Number(req.query.limit || 10);
 
-  const key = `feed:reel:${userId}`;
+  // Instagram v1 uses global ranked feed
+  const key = "feed:reels:global";
 
-  // 1️⃣ Get ranked reel IDs
   const reelIds = await redis.zrevrange(
     key,
-    cursor ? Number(cursor) : 0,
-    (cursor ? Number(cursor) : 0) + limit - 1
+    cursor,
+    cursor + limit - 1
   );
 
-  if (!reelIds.length) return res.json([]);
+  if (!reelIds.length) {
+    return res.json({ data: [], nextCursor: cursor });
+  }
 
-  // 2️⃣ Fetch reels
   const reels = await Reel.find({
     _id: { $in: reelIds },
     isDeleted: false,
@@ -191,15 +192,20 @@ export const getReelFeed = async (req, res) => {
     .populate("creator", "username profileImage")
     .lean();
 
-  // 3️⃣ Preserve order
-  const reelMap = new Map(reels.map(r => [r._id.toString(), r]));
-  const ordered = reelIds.map(id => reelMap.get(id)).filter(Boolean);
+  const reelMap = new Map(
+    reels.map(r => [r._id.toString(), r])
+  );
+
+  const ordered = reelIds
+    .map(id => reelMap.get(id))
+    .filter(Boolean);
 
   res.json({
     data: ordered,
-    nextCursor: (cursor ? Number(cursor) : 0) + limit,
+    nextCursor: cursor + limit,
   });
 };
+
 
 
 

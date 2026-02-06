@@ -112,3 +112,41 @@ export const buildExplorePostsFeed = async () => {
 
   console.log(`✅ Explore posts feed built (${posts.length})`);
 };
+
+export const buildGlobalReelFeed = async () => {
+  const reels = await Reel.find({
+    isDeleted: false,
+    "moderation.status": "ACTIVE",
+  })
+    .select("_id createdAt viewsCount likesCount sharesCount")
+    .lean();
+
+  if (!reels.length) return;
+
+  await redis.del("feed:reels:global");
+
+  const pipeline = redis.multi();
+
+  for (const reel of reels) {
+    const ageHours =
+      (Date.now() - new Date(reel.createdAt)) / 36e5;
+
+    // 🔥 Instagram-like ranking score
+    const score =
+      reel.viewsCount * 1 +
+      reel.likesCount * 4 +
+      reel.sharesCount * 6 -
+      ageHours * 0.7;
+
+    pipeline.zadd(
+      "feed:reels:global",
+      score,
+      reel._id.toString()
+    );
+  }
+
+  await pipeline.exec();
+  await redis.expire("feed:reels:global", 3600);
+
+  console.log("✅ Global reels feed built");
+};

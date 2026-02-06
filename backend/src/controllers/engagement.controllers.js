@@ -5,6 +5,8 @@ import Comment from "../models/comment.models.js"
 import { processReelViewReward } from "../services/reward.service.js";
 import { emitEvent } from "../events/emitEvent.js";
 import { isFeatureEnabled } from "../services/featureFlag.service.js";
+import { getRedis } from "../db/redis.js";
+const redis = getRedis();
 import mongoose from "mongoose"
 
 
