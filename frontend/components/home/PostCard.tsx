@@ -45,8 +45,15 @@ export default function PostCard({ post }: { post: FeedPost }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <Pressable
+          onPress={() =>
+            router.push(`/profile/${post.author._id}`)
+          }
+          style={styles.userRow}
+        >
         <Image source={{ uri: post.author.profileImage }} style={styles.avatar} />
         <Text style={styles.username}>{post.author.username}</Text>
+        </Pressable>
       </View>
 
       <Image source={{ uri: post.media[0].url }} style={styles.media} />
@@ -118,6 +125,11 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 1,
     backgroundColor: "#eee",
+  },
+  userRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   actions: {
     flexDirection: "row",
