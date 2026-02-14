@@ -70,5 +70,8 @@ app.use("/api/v1/notification",notificationRoute);
 import messageRoute from './routes/message.routes.js'
 app.use("/api/v1/message",messageRoute);
 
+import shopRoute from './routes/shop.routes.js'
+app.use("/api/v1/shop",shopRoute);
+
 
 export {app}

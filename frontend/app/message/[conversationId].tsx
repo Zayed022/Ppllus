@@ -36,12 +36,12 @@ export default function ChatScreen() {
   const loadMessages = async (cid: string) => {
     const data = await getMessages(cid);
 
-    const mapped = data
-      .map((msg: any) => ({
-        ...msg,
-        fromMe: msg.senderId === user.id,
-      }))
-      .reverse();
+    const mapped = data.map((msg: any) => ({
+      ...msg,
+      fromMe: msg.senderId === user._id,
+    }));
+    
+      
 
     setMessages(mapped);
   };
@@ -50,10 +50,10 @@ export default function ChatScreen() {
     if (!otherUserId) return;
 
     const optimistic = {
-      _id: Date.now().toString(),
+      _id: `optimistic-${Date.now()}`,
       body: text,
       fromMe: true,
-    };
+    };    
 
     setMessages((prev) => [optimistic, ...prev]);
     await sendMessage(otherUserId, text);

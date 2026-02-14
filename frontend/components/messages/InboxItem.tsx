@@ -1,6 +1,6 @@
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 
 export default function InboxItem({ conversation }: any) {
   const router = useRouter();
@@ -8,9 +8,10 @@ export default function InboxItem({ conversation }: any) {
 
   if (!user) return null;
 
-  // ✅ FIX: participants are OBJECTS, not IDs
+  const currentUserId = user._id || user.id;
+
   const otherUser = conversation.participants.find(
-    (p: any) => p._id !== user.id
+    (p: any) => p._id !== currentUserId
   );
 
   if (!otherUser) return null;
@@ -18,8 +19,8 @@ export default function InboxItem({ conversation }: any) {
   const lastMessageText =
     conversation?.lastMessage?.text || "Say hi 👋";
 
-    const unreadCount =
-    conversation?.unreadCounts?.[user.id] || 0;
+  const unreadCount =
+    conversation?.unreadCounts?.[currentUserId] || 0;
 
   return (
     <Pressable

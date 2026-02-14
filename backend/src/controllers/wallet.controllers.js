@@ -1,5 +1,6 @@
 import { pgPool } from "../db/postgres.js";
 import { getRedis } from "../db/redis.js";
+import { getWalletBalanceByUserId } from "../services/wallet.service.js";
 const redis = getRedis();
 
 
@@ -57,6 +58,11 @@ export const getWalletLedger = async (req, res) => {
     res.json(result.rows);
 };
   
+export const getWalletBalanceController = async (req, res) => {
+  const balance = await getWalletBalanceByUserId(req.user.sub);
+  res.json({ balance });
+};
+
 
 
   

@@ -13,11 +13,13 @@ import {
 import { router } from "expo-router";
 import api from "@/services/api";
 import { saveTokens } from "@/services/auth.storage";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -36,6 +38,7 @@ export default function LoginScreen() {
       const { accessToken, refreshToken, user } = res.data;
 
       await saveTokens(accessToken, refreshToken);
+      setUser(user);
 
       if (!user.isOnboarded) {
         router.replace("/(onboarding)/basic-profile");

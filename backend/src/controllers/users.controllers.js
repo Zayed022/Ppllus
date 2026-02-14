@@ -7,6 +7,7 @@ import { hashToken } from "../utils/token.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { getRedis } from "../db/redis.js";
 import mongoose from "mongoose";
+import { getWalletBalanceByUserId } from "../services/wallet.service.js";
 const redis = getRedis();
 
 const generateAccessAndRefreshTokens = async (user) => {
@@ -114,11 +115,27 @@ export const logout = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
-    const user = await User.findById(req.user.sub).select(
-      "-password -refreshTokenHash"
-    );
-    res.json(user);
-};  
+  const userId = req.user.sub;
+
+  const user = await User.findById(userId)
+    .select("-password -refreshTokenHash")
+    .lean();
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // 🔥 Fetch wallet balance (Redis → PG fallback)
+  const balance = await getWalletBalanceByUserId(userId);
+
+  res.json({
+    ...user,
+    wallet: {
+      balance,
+    },
+  });
+};
+  
 
 
 export const updateBasicProfile = async (req, res) => {

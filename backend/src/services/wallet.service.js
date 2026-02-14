@@ -78,9 +78,12 @@ export const processReelViewReward = async ({
     await client.query(
       `INSERT INTO wallet_ledger_entries
        (wallet_id, type, source, reference_id, points, balance_after)
-       VALUES ($1, 'EARN', 'REEL_WATCH', $2, $3, $4)`,
+       VALUES ($1, 'EARN', 'REEL_WATCH', $2, $3, $4)
+       ON CONFLICT (wallet_id, source, reference_id)
+       DO NOTHING`,
       [walletId, reelId, points, newBalance]
     );
+    
 
     await client.query("COMMIT");
 
@@ -120,3 +123,28 @@ export const getWalletBalance = async (userId) => {
   await redis.set(cacheKey, balance, "EX", 60);
   return balance;
 };
+
+
+export const getWalletBalanceByUserId = async (userId) => {
+  const cacheKey = `wallet:balance:${userId}`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached !== null) return Number(cached);
+
+  const result = await pgPool.query(`
+    SELECT COALESCE(balance_after, 0) AS balance
+    FROM wallet_ledger_entries
+    WHERE wallet_id = (
+      SELECT id FROM wallet_accounts WHERE user_id = $1
+    )
+    ORDER BY created_at DESC
+    LIMIT 1
+  `, [userId]);
+
+  const balance = result.rows[0]?.balance || 0;
+
+  await redis.set(cacheKey, balance, "EX", 60);
+
+  return balance;
+};
+
