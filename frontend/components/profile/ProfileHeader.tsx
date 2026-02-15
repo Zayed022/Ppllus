@@ -5,16 +5,21 @@ import { useRouter } from "expo-router";
 interface Props {
   username: string;
   profileImage: string | null;
+  walletBalance: number;
 }
 
-export default function ProfileHeader({ username, profileImage }: Props) {
+export default function ProfileHeader({
+  username,
+  profileImage,
+  walletBalance,
+}: Props) {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <View style={{ width: 24 }} /> {/* spacer */}
+        <View style={{ width: 24 }} />
 
         <Text style={styles.username}>{username}</Text>
 
@@ -32,7 +37,6 @@ export default function ProfileHeader({ username, profileImage }: Props) {
 
       {/* Avatar + Stats */}
       <View style={styles.row}>
-        {/* Avatar */}
         <View>
           <Image
             source={{ uri: profileImage ?? undefined }}
@@ -43,13 +47,23 @@ export default function ProfileHeader({ username, profileImage }: Props) {
           </View>
         </View>
 
-        {/* Stats */}
         <View style={styles.stats}>
           <Stat label="Posts" value={0} />
           <Stat label="Followers" value={0} />
           <Stat label="Following" value={2} />
         </View>
       </View>
+
+      {/* 💰 Wallet Section */}
+      <Pressable
+        onPress={() => router.push("/modal/wallet")}
+        style={styles.walletContainer}
+      >
+        <Ionicons name="wallet-outline" size={18} color="#000" />
+        <Text style={styles.walletText}>
+          {walletBalance} Coins
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -137,4 +151,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#666",
   },
+  walletContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  
+  walletText: {
+    marginLeft: 6,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  
 });

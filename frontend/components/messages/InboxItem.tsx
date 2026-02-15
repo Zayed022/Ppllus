@@ -26,10 +26,16 @@ export default function InboxItem({ conversation }: any) {
     <Pressable
       style={styles.container}
       onPress={() =>
-        router.push(
-          `/message/${conversation._id}?otherUserId=${otherUser._id}`
-        )
+        router.push({
+          pathname: `/message/${conversation._id}`,
+          params: {
+            otherUserId: otherUser._id,
+            username: otherUser.username,
+            profileImage: otherUser.profileImage,
+          },
+        })
       }
+      
     >
       <Image
         source={{

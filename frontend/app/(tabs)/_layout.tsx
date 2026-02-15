@@ -49,15 +49,16 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Create */}
-      <Tabs.Screen
-        name="create"
-        options={{
-          tabBarIcon: () => (
-            <Feather name="plus-square" size={30} color="#000" />
-          ),
-        }}
-      />
+    {/* Create */}
+<Tabs.Screen
+  name="create"
+  options={{
+    tabBarIcon: () => (
+      <Feather name="map-pin" size={30} color="#000" />
+    ),
+  }}
+/>
+
 
       {/* Activity */}
       <Tabs.Screen
