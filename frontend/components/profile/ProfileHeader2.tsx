@@ -1,4 +1,4 @@
-import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 
 const resolveProfileImage = (user: any) => {
   const uri = user?.profileImage;
@@ -17,6 +17,8 @@ export default function ProfileHeader({
   isFollowing,
   isRequested,
   onFollow,
+  onMessage,
+  loadingFollow,
 }: {
   user: any;
   counts: { posts: number; followers: number; following: number };
@@ -24,6 +26,8 @@ export default function ProfileHeader({
   isFollowing: boolean;
   isRequested: boolean;
   onFollow: () => void;
+  onMessage: () => void;
+  loadingFollow: boolean;
 }) {
   const getButtonLabel = () => {
     if (isFollowing) return "Following";
@@ -52,23 +56,28 @@ export default function ProfileHeader({
       {!isOwnProfile && (
         <View style={styles.actions}>
           <Pressable
+            disabled={loadingFollow}
             style={[
               styles.followBtn,
               (isFollowing || isRequested) && styles.followingBtn,
             ]}
             onPress={onFollow}
           >
-            <Text
-              style={[
-                styles.followText,
-                (isFollowing || isRequested) && styles.followingText,
-              ]}
-            >
-              {getButtonLabel()}
-            </Text>
+            {loadingFollow ? (
+              <ActivityIndicator size="small" color="#999" />
+            ) : (
+              <Text
+                style={[
+                  styles.followText,
+                  (isFollowing || isRequested) && styles.followingText,
+                ]}
+              >
+                {getButtonLabel()}
+              </Text>
+            )}
           </Pressable>
 
-          <Pressable style={styles.messageBtn}>
+          <Pressable style={styles.messageBtn} onPress={onMessage}>
             <Text style={styles.messageText}>Message</Text>
           </Pressable>
         </View>
@@ -92,7 +101,6 @@ const styles = StyleSheet.create({
     height: 86,
     borderRadius: 43,
     backgroundColor: "#eee",
-    overflow: "hidden",
   },
   stats: {
     flex: 1,
@@ -102,6 +110,7 @@ const styles = StyleSheet.create({
   username: { fontWeight: "700", marginTop: 12, fontSize: 15 },
   bio: { marginTop: 4, color: "#333" },
   actions: { flexDirection: "row", gap: 8, marginTop: 14 },
+
   followBtn: {
     flex: 1,
     backgroundColor: "#0095f6",
@@ -116,6 +125,7 @@ const styles = StyleSheet.create({
   },
   followText: { color: "#fff", fontWeight: "600" },
   followingText: { color: "#000" },
+
   messageBtn: {
     flex: 1,
     borderWidth: 1,

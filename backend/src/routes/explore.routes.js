@@ -5,6 +5,7 @@ import {
   getReelFeed,
   getReelsByCategory,
   getReelsByCity,
+  trackReelView,
 } from "../controllers/explore.controllers.js";
 
 import {authenticate} from "../middlewares/auth.middlewares.js"
@@ -22,6 +23,13 @@ router.get(
   authenticate, // optional but recommended
   getExploreReels
 );
+
+router.post(
+  "/:reelId/view",
+  authenticate,
+  trackReelView
+);
+
 
 router.get(
   "/explore/posts",

@@ -8,6 +8,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { getRedis } from "../db/redis.js";
 import mongoose from "mongoose";
 import { getWalletBalanceByUserId } from "../services/wallet.service.js";
+import { pgPool } from "../db/postgres.js";
 const redis = getRedis();
 
 const generateAccessAndRefreshTokens = async (user) => {
@@ -24,8 +25,6 @@ export const register = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
-    console.log("REGISTER REQUEST", { email, phone });
-
     const exists = await User.findOne({ $or: [{ email }, { phone }] });
     if (exists) {
       return res.status(409).json({ message: "User already exists" });
@@ -38,6 +37,14 @@ export const register = async (req, res) => {
       pplusNumber: `PL-${Date.now()}`,
     });
 
+    // 🔥 CREATE WALLET HERE
+    await pgPool.query(
+      `INSERT INTO wallet_accounts (user_id)
+       VALUES ($1)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [user._id.toString()]
+    );
+
     const tokens = await generateAccessAndRefreshTokens(user);
 
     return res.status(201).json({
@@ -47,15 +54,16 @@ export const register = async (req, res) => {
       },
       ...tokens,
     });
+
   } catch (error) {
     console.error("REGISTER ERROR", error);
-
     return res.status(500).json({
       message: "Registration failed",
       error: error.message,
     });
   }
 };
+
 
 
 export const login = async (req, res) => {
@@ -462,4 +470,26 @@ export const getUserProfileById = async (req, res) => {
     res.status(500).json({ message: "Failed to load profile" });
   }
 };
+
+export const savePushToken = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Token required" });
+    }
+
+    await User.updateOne(
+      { _id: userId },
+      { $addToSet: { pushTokens: token } } // avoids duplicates
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Save push token error:", err);
+    res.status(500).json({ message: "Failed to save token" });
+  }
+};
+
 

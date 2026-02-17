@@ -14,7 +14,8 @@ import {
   
   import { getMe } from "@/services/user.api";
   import { updateBasicProfile } from "@/services/profile.api";
-  import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
+  
   
   const resolveProfileImage = (uri?: string, username?: string) => {
     if (!uri) {

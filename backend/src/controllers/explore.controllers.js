@@ -1,6 +1,7 @@
 import Reel from "../models/reel.models.js";
 import Post from "../models/post.models.js"
 import { getRedis } from "../db/redis.js";
+import { processReelViewReward } from "../services/wallet.service.js";
 const redis = getRedis();
 
 export const getExploreReels = async (req, res) => {
@@ -206,6 +207,24 @@ export const getReelFeed = async (req, res) => {
   });
 };
 
+export const trackReelView = async (req, res) => {
+  const userId = req.user.sub;
+  const reelId = req.params.reelId;
+  const { watchTime } = req.body;
+
+  try {
+    await processReelViewReward({
+      userId,
+      reelId,
+      watchTime,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Reel view reward error:", err);
+    res.status(500).json({ message: "Failed to track reel view" });
+  }
+};
 
 
 

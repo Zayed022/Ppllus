@@ -71,6 +71,7 @@ export default function ProfileScreen() {
       <ProfileActions
         userId={user._id}
         isOwnProfile={true}
+        username={user.username} 
       />
 
       <ProfileTabs userId={user._id} />

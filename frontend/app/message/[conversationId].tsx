@@ -20,6 +20,7 @@ import {
 import MessageBubble from "@/components/messages/MessageBubble";
 import MessageInput from "@/components/messages/MessageInput";
 import { useAuth } from "@/context/AuthContext";
+import { uploadToCloudinary } from "@/services/upload.api";
 
 export default function ChatScreen() {
   const params = useLocalSearchParams();
@@ -76,26 +77,44 @@ export default function ChatScreen() {
 
   /* ---------------- SEND MESSAGE ---------------- */
 
-  const onSend = async (text: string) => {
+  const onSend = async ({ text, media }: any) => {
     if (!otherUserId || !user) return;
-
-    const optimistic = {
-      _id: `optimistic-${Date.now()}`,
-      body: text,
-      senderId: user._id,
-      fromMe: true,
-    };
-
-    // Add to top because inverted
-    setMessages((prev) => [optimistic, ...prev]);
-
+  
+    let uploadedMedia = null;
+  
     try {
-      await sendMessage(otherUserId, text);
+      if (media) {
+        const uploadRes = await uploadToCloudinary(media);
+  
+        uploadedMedia = {
+          url: uploadRes.secure_url,
+          type:
+            media.type?.includes("video")
+              ? "VIDEO"
+              : "IMAGE",
+        };
+      }
+  
+      const optimistic = {
+        _id: `optimistic-${Date.now()}`,
+        body: text || "",
+        media: uploadedMedia,
+        senderId: user._id,
+        fromMe: true,
+      };
+  
+      setMessages(prev => [optimistic, ...prev]);
+  
+      await sendMessage(otherUserId, text, uploadedMedia);
+  
       loadMessages();
+  
     } catch (err) {
       console.log("SEND ERROR:", err);
     }
   };
+  
+  
 
   /* ---------------- RENDER ---------------- */
 
@@ -121,29 +140,32 @@ export default function ChatScreen() {
   
       {/* CHAT BODY */}
       <KeyboardAvoidingView
-        style={styles.chatContainer}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={80}
-      >
-        <FlatList
-          style={styles.list}
-          data={messages.filter(Boolean)}
-          inverted
-          keyExtractor={(item) => item._id?.toString()}
-          renderItem={({ item }) => (
-            <MessageBubble message={item} />
-          )}
-          contentContainerStyle={{
-            padding: 12,
-          }}
-          keyboardShouldPersistTaps="handled"
-        />
-  
-        <View style={styles.inputWrapper}>
-          <MessageInput onSend={onSend} />
-        </View>
-  
-      </KeyboardAvoidingView>
+  style={{ flex: 1 }}
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+>
+  <View style={{ flex: 1 }}>
+
+    <FlatList
+      data={messages.filter(Boolean)}
+      inverted
+      keyExtractor={(item) => item._id?.toString()}
+      renderItem={({ item }) => (
+        <MessageBubble message={item} />
+      )}
+      contentContainerStyle={{
+        padding: 12,
+        paddingBottom: 10,
+      }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    />
+
+  </View>
+
+  <MessageInput onSend={onSend} />
+</KeyboardAvoidingView>
+
     </View>
   );
   

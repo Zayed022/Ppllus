@@ -167,6 +167,12 @@ const userSchema = new Schema(
     lastLoginAt: {
       type: Date,
     },
+    pushTokens: [
+      {
+        type: String,
+      },
+    ],
+    
   },
   { timestamps: true }
 );

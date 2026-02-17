@@ -87,11 +87,17 @@ import {
   export const sendMessage = async (req, res) => {
     try {
       const from = req.user.sub;
-      const { to, body } = req.body;
+      const { to, body, media } = req.body;
   
-      if (!to || !body?.trim()) {
+      if (!to) {
         return res.status(400).json({
-          message: "Recipient and message body are required",
+          message: "Recipient required",
+        });
+      }
+  
+      if (!body?.trim() && !media?.url) {
+        return res.status(400).json({
+          message: "Message body or media required",
         });
       }
   
@@ -99,6 +105,7 @@ import {
         from,
         to,
         body,
+        media,
       });
   
       res.status(201).json(result);
@@ -107,3 +114,4 @@ import {
       res.status(500).json({ message: "Failed to send message" });
     }
   };
+  

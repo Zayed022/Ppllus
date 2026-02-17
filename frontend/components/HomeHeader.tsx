@@ -23,7 +23,8 @@ export default function HomeHeader() {
       style={styles.iconButton}
       onPress={() => router.push("/message/inbox")}
     >
-      <Feather name="heart" size={22} color="#000" />
+      <Feather name="message-circle" size={22} color="#000" />
+
     </Pressable>
     </View>
   );

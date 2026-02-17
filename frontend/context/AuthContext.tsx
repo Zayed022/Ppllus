@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { getMe } from "@/services/user.api";
+import { registerPushToken } from "@/services/notification.api";
 
 
 interface AuthContextType {
@@ -20,6 +21,12 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      registerPushToken();
+    }
+  }, [user]);
 
   const loadUser = async () => {
     try {

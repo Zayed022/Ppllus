@@ -51,16 +51,19 @@ import {
     }, [reel._id]);
   
     /* ---------------- PLAY / PAUSE ---------------- */
-    useEffect(() => {
-      if (isActive) {
-        videoRef.current?.playAsync();
-        watchStart.current = Date.now();
-      } else {
-        videoRef.current?.pauseAsync();
-        flushWatchTime();
-        progress.setValue(0);
-      }
-    }, [isActive]);
+    const accumulatedWatch = useRef(0);
+
+useEffect(() => {
+  if (!isActive) return;
+
+  const interval = setInterval(() => {
+    accumulatedWatch.current += 2;
+    recordReelView(reel._id, accumulatedWatch.current);
+  }, 8000); // every 8 seconds
+
+  return () => clearInterval(interval);
+}, [isActive]);
+
   
     /* ---------------- WATCH TIME ---------------- */
     const flushWatchTime = () => {

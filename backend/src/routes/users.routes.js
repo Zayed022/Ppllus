@@ -15,6 +15,7 @@ import {
   getMyProfileImage,
   getUserProfile,
   getUserProfileById,
+  savePushToken,
 } from "../controllers/users.controllers.js";
 import { authenticate } from "../middlewares/auth.middlewares.js";
 import { rateLimiter } from "../middlewares/rateLimiter.js";
@@ -57,6 +58,8 @@ router.post("/onboarding/complete", authenticate, completeOnboarding);   // done
 router.get("/search", authenticate, searchUsers);
 router.get("/search2", authenticate, searchUsers2);
 router.patch("/privacy", authenticate, updatePrivacy);
+router.post("/push-token", authenticate, savePushToken);
+
 router.delete("/deactivate", authenticate, deactivateAccount);
 router.get("/:userId/profile", authenticate, getUserProfile);
 router.get(

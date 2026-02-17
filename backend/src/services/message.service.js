@@ -11,6 +11,7 @@ import {
   import Conversation from "../models/conversation.models.js";
   import Message from "../models/message.models.js"
 import mongoose from "mongoose";
+import { sendPushNotification } from "../utils/push.utils.js";
   
   /**
    * Get inbox (chat list)
@@ -37,7 +38,7 @@ import mongoose from "mongoose";
   /**
    * Send message (atomic, scalable)
    */
-  export const sendMessageService = async ({ from, to, body }) => {
+  export const sendMessageService = async ({ from, to, body, media }) => {
     const session = await mongoose.startSession();
     session.startTransaction();
   
@@ -48,7 +49,8 @@ import mongoose from "mongoose";
         {
           conversationId: conversation._id,
           senderId: from,
-          body,
+          body: body || "",
+          media: media || undefined,
           status: "SENT",
         },
         session
@@ -59,7 +61,7 @@ import mongoose from "mongoose";
         {
           $set: {
             lastMessage: {
-              text: body,
+              text: body || (media?.type === "IMAGE" ? "📷 Photo" : "🎥 Video"),
               sender: from,
               createdAt: message.createdAt,
             },
@@ -70,7 +72,28 @@ import mongoose from "mongoose";
       );
   
       await session.commitTransaction();
-      return { conversationId: conversation._id, message };
+
+      const recipient = await User.findById(to).select("pushTokens username");
+
+if (recipient?.pushTokens?.length) {
+  await sendPushNotification({
+    tokens: recipient.pushTokens,
+    title: "New Message",
+    body: body || "📎 Sent a media",
+    data: {
+      conversationId: conversation._id.toString(),
+      senderId: from,
+    },
+  });
+}
+
+return { conversationId: conversation._id, message };
+  
+      return {
+        conversationId: conversation._id,
+        message,
+      };
+  
     } catch (err) {
       await session.abortTransaction();
       throw err;
@@ -78,6 +101,7 @@ import mongoose from "mongoose";
       session.endSession();
     }
   };
+  
   
   /**
    * Mark conversation as seen

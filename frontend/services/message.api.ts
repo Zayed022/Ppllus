@@ -19,7 +19,17 @@ export const markConversationSeen = async (conversationId: string) => {
   await api.post(`/message/${conversationId}/seen`);
 };
 
-export const sendMessage = async (to: string, body: string) => {
-  const res = await api.post("/message/send", { to, body });
+export const sendMessage = async (
+  to: string,
+  body?: string,
+  media?: any
+) => {
+  const res = await api.post("/message/send", {
+    to,
+    body,
+    media,
+  });
+
   return res.data;
 };
+

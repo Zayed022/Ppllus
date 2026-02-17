@@ -14,7 +14,8 @@ import mongoose from "mongoose"
 export const recordReelView = async (req, res) => {
   const { reelId } = req.params;
   const { watchTime = 0 } = req.body;
-  const userKey = req.user?.sub || req.ip;
+  const userId = req.user?.sub;
+  const userKey = userId || req.ip;
 
   // 1️⃣ Deduplicate views (30 min)
   const dedupeKey = `reel:view:${reelId}:${userKey}`;
@@ -37,16 +38,27 @@ export const recordReelView = async (req, res) => {
     return res.status(404).json({ message: "Reel not found" });
   }
 
-  // 3️⃣ Store engagement
+  // 3️⃣ Store engagement (async)
   EngagementEvent.create({
-    user: req.user?.sub,
+    user: userId,
     contentId: reelId,
     contentType: "REEL",
     eventType: "VIEW",
     watchTime,
   }).catch(console.error);
 
-  // 4️⃣ Emit ranking signal
+  // 🔥 4️⃣ REWARD SYSTEM CALL (THIS WAS MISSING)
+  if (userId) {
+    processReelViewReward({
+      userId,
+      reelId,
+      watchTime,
+    }).catch(console.error);
+  }
+  
+console.log("WATCH TIME:", watchTime);
+
+  // 5️⃣ Ranking signal
   emitEvent({
     type: "RANK_REEL",
     reelId,
@@ -57,6 +69,7 @@ export const recordReelView = async (req, res) => {
 
   res.json({ viewed: true });
 };
+
 
 export const likeReel = async (req, res) => {
   const userId = req.user.sub;
