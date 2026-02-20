@@ -4,6 +4,7 @@ const redis = getRedis();
 
 
 const DAILY_CAP = 50;
+const MAX_REWARDABLE_SECONDS = 30;
 
 export const processReelViewReward = async ({
   userId,
@@ -17,7 +18,6 @@ export const processReelViewReward = async ({
   try {
     await client.query("BEGIN");
 
-    // Get wallet id (wallet guaranteed to exist now)
     const walletRes = await client.query(
       `SELECT id FROM wallet_accounts WHERE user_id = $1`,
       [userId]
@@ -35,14 +35,36 @@ export const processReelViewReward = async ({
       [walletId]
     );
 
+    // ✅ Clamp max seconds per reel
+    const effectiveWatch = Math.min(
+      watchTime,
+      MAX_REWARDABLE_SECONDS
+    );
+
     const points =
-      watchTime >= 15 ? 5 :
-      watchTime >= 8  ? 3 : 2;
+      effectiveWatch >= 20 ? 5 :
+      effectiveWatch >= 10 ? 3 :
+      2;
+
+    // ✅ Check daily cap BEFORE insert
+    const dailyEarned = await client.query(
+      `SELECT COALESCE(SUM(points), 0) as total
+       FROM wallet_ledger_entries
+       WHERE wallet_id = $1
+       AND type = 'EARN'
+       AND created_at >= CURRENT_DATE`,
+      [walletId]
+    );
+
+    if (Number(dailyEarned.rows[0].total) >= DAILY_CAP) {
+      await client.query("ROLLBACK");
+      return;
+    }
 
     const insertRes = await client.query(`
       INSERT INTO wallet_ledger_entries
-      (wallet_id, type, source, reference_id, points, balance_after)
-      SELECT $1, 'EARN', 'REEL_WATCH', $2, $3,
+      (wallet_id, type, source, reference_id, points, reward_date, balance_after)
+      SELECT $1, 'EARN', 'REEL_WATCH', $2, $3, CURRENT_DATE,
         COALESCE(
           (SELECT balance_after
            FROM wallet_ledger_entries
@@ -50,7 +72,7 @@ export const processReelViewReward = async ({
            ORDER BY created_at DESC
            LIMIT 1),
         0) + $3
-      ON CONFLICT (wallet_id, source, reference_id)
+      ON CONFLICT (wallet_id, source, reference_id, reward_date)
       DO NOTHING
       RETURNING balance_after
     `, [walletId, reelId, points]);
@@ -78,6 +100,7 @@ export const processReelViewReward = async ({
     client.release();
   }
 };
+
 
 
 
@@ -111,18 +134,21 @@ export const getWalletBalanceByUserId = async (userId) => {
   if (cached !== null) return Number(cached);
 
   const result = await pgPool.query(`
-    SELECT COALESCE(MAX(wle.balance_after), 0) AS balance
+    SELECT wle.balance_after
     FROM wallet_accounts wa
     LEFT JOIN wallet_ledger_entries wle
       ON wle.wallet_id = wa.id
     WHERE wa.user_id = $1
+    ORDER BY wle.created_at DESC
+    LIMIT 1
   `, [userId]);
 
-  const balance = result.rows[0]?.balance || 0;
+  const balance = result.rows[0]?.balance_after || 0;
 
   await redis.set(cacheKey, balance, "EX", 60);
 
   return balance;
 };
+
 
 

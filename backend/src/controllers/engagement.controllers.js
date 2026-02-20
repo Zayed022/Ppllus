@@ -1,7 +1,6 @@
 import EngagementEvent from "../models/engagementEvent.models.js";
 import Reel from "../models/reel.models.js";
 import ReelLike from "../models/reelLike.models.js";
-import User from "../models/users.models.js"
 import Comment from "../models/comment.models.js"
 import { processReelViewReward } from "../services/reward.service.js";
 import { emitEvent } from "../events/emitEvent.js";
